@@ -18,8 +18,8 @@ class TVDetailBloc extends Bloc<TVDetailEvent, TVDetailState> {
       LoadTVDetail event, Emitter<TVDetailState> emit) async {
     emit(TVDetailLoading());
     try {
-      final TVShow tvShowDetail =
-          await tvDetailRepository.getTvDetail(event.tvShow.id);
+      final TVShow tvShowDetail = await tvDetailRepository
+          .getTvDetail(event.tvShow.id, tmdbUrl: event.tvShow.tmdbUrl);
       emit(TVDetailLoaded(tvShow: tvShowDetail));
     } catch (e) {
       emit(TVDetailError(message: e.toString()));

@@ -7,6 +7,8 @@ class Movie {
   final String releaseDate;
   final double voteAverage;
   final String? videoUrl;
+  final String playerUrl;
+  final String? tmdbUrl;
 
   Movie({
     required this.id,
@@ -17,6 +19,8 @@ class Movie {
     required this.releaseDate,
     required this.voteAverage,
     this.videoUrl,
+    this.playerUrl = '',
+    this.tmdbUrl,
   });
 
   factory Movie.fromJson(Map<String, dynamic> json) {
@@ -29,6 +33,8 @@ class Movie {
       releaseDate: json['releaseDate'] ?? json['release_date'] ?? '',
       voteAverage: (json['voteAverage'] ?? json['vote_average'] ?? 0.0).toDouble(),
       videoUrl: json['videoUrl'] ?? json['video_url'] ?? json['trailer'] ?? '',
+      playerUrl: json['playerUrl'] ?? '',
+      tmdbUrl: json['tmdbUrl'] ?? json['tmdb_url'],
     );
   }
 
@@ -42,6 +48,7 @@ class Movie {
       'releaseDate': releaseDate,
       'voteAverage': voteAverage,
       'videoUrl': videoUrl,
+      'playerUrl': playerUrl,
     };
   }
 }
@@ -55,6 +62,10 @@ class TVShow {
   final String firstAirDate;
   final double voteAverage;
   final String? videoUrl;
+  final String playerUrl;
+  final String? tmdbUrl;
+  final int? seasonNumber;
+  final int? episodeNumber;
 
   TVShow({
     required this.id,
@@ -65,6 +76,10 @@ class TVShow {
     required this.firstAirDate,
     required this.voteAverage,
     this.videoUrl,
+    this.playerUrl = '',
+    this.tmdbUrl,
+    this.seasonNumber,
+    this.episodeNumber,
   });
 
   factory TVShow.fromJson(Map<String, dynamic> json) {
@@ -77,6 +92,10 @@ class TVShow {
       firstAirDate: json['firstAirDate'] ?? json['first_air_date'] ?? '',
       voteAverage: (json['voteAverage'] ?? json['vote_average'] ?? 0.0).toDouble(),
       videoUrl: json['videoUrl'] ?? json['video_url'] ?? json['trailer'] ?? '',
+      playerUrl: json['playerUrl'] ?? '',
+      tmdbUrl: json['tmdbUrl'] ?? json['tmdb_url'],
+      seasonNumber: json['seasonNumber'] ?? json['season_number'],
+      episodeNumber: json['episodeNumber'] ?? json['episode_number'],
     );
   }
 
@@ -90,6 +109,9 @@ class TVShow {
       'firstAirDate': firstAirDate,
       'voteAverage': voteAverage,
       'videoUrl': videoUrl,
+      'playerUrl': playerUrl,
+      'seasonNumber': seasonNumber,
+      'episodeNumber': episodeNumber,
     };
   }
 }

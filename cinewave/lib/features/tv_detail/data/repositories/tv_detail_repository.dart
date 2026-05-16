@@ -6,7 +6,7 @@ class TVDetailRepository {
 
   TVDetailRepository({required this.tvDetailRemoteDataSource});
 
-   Future<TVShow> getTvDetail(int tvShowId) async {
-     return await tvDetailRemoteDataSource.getTvDetail(tvShowId);
-   }
+  Future<TVShow> getTvDetail(int tvShowId, {String? tmdbUrl}) async {
+    return await tvDetailRemoteDataSource.getTvDetail(tvShowId, tmdbUrl: tmdbUrl);
+  }
 }

@@ -3,6 +3,9 @@ import 'package:cinewave/core/models/media_models.dart';
 import 'package:cinewave/shared/widgets/network_image.dart';
 
 class TVList extends StatelessWidget {
+  static const double _tileWidth = 130;
+  static const double _tileHeight = 190;
+
   final List<TVShow> tvShows;
 
   const TVList({super.key, required this.tvShows});
@@ -30,30 +33,30 @@ class TVList extends StatelessWidget {
               );
             },
             child: Container(
-              width: 130,
+              width: _tileWidth,
               margin: const EdgeInsets.symmetric(horizontal: 6),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(4),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.3),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: NetworkImageWidget(
-                          imageUrl: tvShow.posterUrl,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: tvShow.posterUrl.isNotEmpty
+                          ? NetworkImageWidget(
+                              imageUrl: tvShow.posterUrl,
+                              width: _tileWidth,
+                              height: _tileHeight,
+                              fit: BoxFit.cover,
+                            )
+                          : const ColoredBox(
+                              color: Color(0xFF1F1F1F),
+                              child: Center(
+                                child: Icon(
+                                  Icons.live_tv,
+                                  color: Colors.white38,
+                                ),
+                              ),
+                            ),
                     ),
                   ),
                   const SizedBox(height: 8),

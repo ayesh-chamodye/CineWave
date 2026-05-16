@@ -10,13 +10,16 @@ class SearchRemoteDataSource {
     final response = await apiClient.get(
       ApiEndpoints.moviesSearch(query),
     );
-    return response.data;
+    // API wraps results in a "results" key
+    final results = response.data['results'] ?? response.data;
+    return results is List<dynamic> ? results : <dynamic>[];
   }
 
   Future<List<dynamic>> searchTvShows(String query) async {
     final response = await apiClient.get(
       ApiEndpoints.tvSearch(query),
     );
-    return response.data;
+    final results = response.data['results'] ?? response.data;
+    return results is List<dynamic> ? results : <dynamic>[];
   }
 }

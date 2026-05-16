@@ -10,76 +10,76 @@ class SearchPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final searchBloc = context.read<SearchBloc>();
+
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
       child: SafeArea(
         child: Column(
           children: [
-            _buildSearchBar(context),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search movies & TV shows…',
+                  hintStyle: const TextStyle(color: Colors.white54),
+                  prefixIcon: const Icon(Icons.search, color: Colors.white54),
+                  filled: true,
+                  fillColor: Colors.white10,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                style: const TextStyle(color: Colors.white),
+                textInputAction: TextInputAction.search,
+                onSubmitted: (value) {
+                  final trimmed = value.trim();
+                  if (trimmed.isNotEmpty) {
+                    searchBloc.add(SearchMovies(query: trimmed));
+                    searchBloc.add(SearchTvShows(query: trimmed));
+                  }
+                },
+              ),
+            ),
             Expanded(
               child: BlocBuilder<SearchBloc, SearchState>(
                 builder: (context, state) {
                   if (state is SearchLoading) {
                     return const LoadingIndicator();
-                  } else if (state is SearchMoviesLoaded) {
+                  }
+
+                  if (state is SearchResultsLoaded) {
                     return SearchResultList(
                       movies: state.movies,
-                      tvShows: const [],
-                    );
-                  } else if (state is SearchTvShowsLoaded) {
-                    return SearchResultList(
-                      movies: const [],
                       tvShows: state.tvShows,
                     );
-                  } else if (state is SearchError) {
+                  }
+
+                  if (state is SearchError) {
                     return ErrorDisplay(
                       message: state.message,
                       onRetry: () {
-                        if (state.query != null && state.query!.isNotEmpty) {
-                          context.read<SearchBloc>().add(SearchMovies(query: state.query!));
-                          context.read<SearchBloc>().add(SearchTvShows(query: state.query!));
+                        final q = state.query;
+                        if (q != null && q.isNotEmpty) {
+                          searchBloc.add(SearchMovies(query: q));
+                          searchBloc.add(SearchTvShows(query: q));
                         }
                       },
                     );
-                  } else {
-                    return const Center(
-                      child: Text(
-                        'Search for movies and TV shows',
-                        style: TextStyle(color: Colors.white70),
-                      ),
-                    );
                   }
+
+                  return const Center(
+                    child: Text(
+                      'Search for movies and TV shows',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                  );
                 },
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildSearchBar(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: TextField(
-        decoration: InputDecoration(
-          hintText: 'Search for movies and TV shows',
-          hintStyle: const TextStyle(color: Colors.white54),
-          prefixIcon: const Icon(Icons.search, color: Colors.white54),
-          filled: true,
-          fillColor: Colors.white10,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide.none,
-          ),
-        ),
-        style: const TextStyle(color: Colors.white),
-        onSubmitted: (value) {
-          if (value.isNotEmpty) {
-            context.read<SearchBloc>().add(SearchMovies(query: value));
-            context.read<SearchBloc>().add(SearchTvShows(query: value));
-          }
-        },
       ),
     );
   }

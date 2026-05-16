@@ -9,18 +9,24 @@ part 'search_state.dart';
 class SearchBloc extends Bloc<SearchEvent, SearchState> {
   final SearchRepository searchRepository;
 
-  SearchBloc({required this.searchRepository}) : super(SearchInitial()) {
+  SearchBloc({required this.searchRepository}) : super(const SearchInitial()) {
     on<SearchMovies>(_onSearchMovies);
     on<SearchTvShows>(_onSearchTvShows);
   }
 
   Future<void> _onSearchMovies(
       SearchMovies event, Emitter<SearchState> emit) async {
-    emit(SearchLoading());
+    emit(const SearchLoading());
     try {
       final List<Movie> movies =
           await searchRepository.searchMovies(event.query);
-      emit(SearchMoviesLoaded(movies: movies));
+      // Merge with any already-loaded TV results
+      final prev = state;
+      emit(SearchResultsLoaded(
+        query: event.query,
+        movies: movies,
+        tvShows: prev is SearchResultsLoaded ? prev.tvShows : const [],
+      ));
     } catch (e) {
       emit(SearchError(message: e.toString(), query: event.query));
     }
@@ -28,11 +34,17 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
 
   Future<void> _onSearchTvShows(
       SearchTvShows event, Emitter<SearchState> emit) async {
-    emit(SearchLoading());
+    emit(const SearchLoading());
     try {
       final List<TVShow> tvShows =
           await searchRepository.searchTvShows(event.query);
-      emit(SearchTvShowsLoaded(tvShows: tvShows));
+      // Merge with any already-loaded movie results
+      final prev = state;
+      emit(SearchResultsLoaded(
+        query: event.query,
+        movies: prev is SearchResultsLoaded ? prev.movies : const [],
+        tvShows: tvShows,
+      ));
     } catch (e) {
       emit(SearchError(message: e.toString(), query: event.query));
     }

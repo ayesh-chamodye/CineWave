@@ -34,7 +34,7 @@ class CategorySection extends StatelessWidget {
                 TextButton(
                   onPressed: onSeeAll,
                   style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFFE50914),
+                    foregroundColor: const Color(0xFF2F1869),
                     padding: EdgeInsets.zero,
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,

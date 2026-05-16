@@ -6,7 +6,7 @@ class MovieDetailRepository {
 
   MovieDetailRepository({required this.movieDetailRemoteDataSource});
 
-  Future<Movie> getMovieDetail(int movieId) async {
-    return await movieDetailRemoteDataSource.getMovieDetail(movieId);
+  Future<Movie> getMovieDetail(int movieId, {String? tmdbUrl}) async {
+    return await movieDetailRemoteDataSource.getMovieDetail(movieId, tmdbUrl: tmdbUrl);
   }
 }

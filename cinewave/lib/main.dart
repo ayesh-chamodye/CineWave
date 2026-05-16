@@ -84,7 +84,7 @@ class CineWaveApp extends StatelessWidget {
           theme: AppTheme.getTheme(),
           debugShowCheckedModeBanner: false,
           initialRoute: '/splash',
-          routes: AppRoutes.routes,
+          onGenerateRoute: AppRoutes.onGenerateRoute,
         ),
       ),
     );

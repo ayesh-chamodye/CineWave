@@ -18,8 +18,8 @@ class MovieDetailBloc extends Bloc<MovieDetailEvent, MovieDetailState> {
       LoadMovieDetail event, Emitter<MovieDetailState> emit) async {
     emit(MovieDetailLoading());
     try {
-      final Movie movieDetail =
-          await movieDetailRepository.getMovieDetail(event.movie.id);
+      final Movie movieDetail = await movieDetailRepository
+          .getMovieDetail(event.movie.id, tmdbUrl: event.movie.tmdbUrl);
       emit(MovieDetailLoaded(movie: movieDetail));
     } catch (e) {
       emit(MovieDetailError(message: e.toString()));

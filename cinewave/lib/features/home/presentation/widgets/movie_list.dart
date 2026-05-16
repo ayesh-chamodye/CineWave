@@ -3,6 +3,9 @@ import 'package:cinewave/core/models/media_models.dart';
 import 'package:cinewave/shared/widgets/network_image.dart';
 
 class MovieList extends StatelessWidget {
+  static const double _tileWidth = 130;
+  static const double _tileHeight = 190;
+
   final List<Movie> movies;
 
   const MovieList({super.key, required this.movies});
@@ -30,29 +33,19 @@ class MovieList extends StatelessWidget {
               );
             },
             child: Container(
-              width: 130,
+              width: _tileWidth,
               margin: const EdgeInsets.symmetric(horizontal: 6),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(4),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.3),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: NetworkImageWidget(
-                          imageUrl: movie.posterUrl,
-                          fit: BoxFit.cover,
-                        ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: NetworkImageWidget(
+                        imageUrl: movie.posterUrl,
+                        width: _tileWidth,
+                        height: _tileHeight,
+                        fit: BoxFit.cover,
                       ),
                     ),
                   ),

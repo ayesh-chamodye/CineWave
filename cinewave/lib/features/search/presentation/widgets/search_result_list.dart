@@ -3,6 +3,9 @@ import 'package:cinewave/core/models/media_models.dart';
 import 'package:cinewave/shared/widgets/network_image.dart';
 
 class SearchResultList extends StatelessWidget {
+  static const double _tileWidth = 120;
+  static const double _tileHeight = 175;
+
   final List<Movie> movies;
   final List<TVShow> tvShows;
 
@@ -15,7 +18,7 @@ class SearchResultList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      cacheExtent: 800,
+      cacheExtent: 600,
       addAutomaticKeepAlives: true,
       children: [
         if (movies.isNotEmpty) ...[
@@ -47,13 +50,18 @@ class SearchResultList extends StatelessWidget {
                     );
                   },
                   child: Container(
-                    width: 120,
+                    width: _tileWidth,
                     margin: const EdgeInsets.symmetric(horizontal: 8),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
-                          child: NetworkImageWidget(imageUrl: movie.posterUrl),
+                          child: NetworkImageWidget(
+                            imageUrl: movie.posterUrl,
+                            width: _tileWidth,
+                            height: _tileHeight,
+                            fit: BoxFit.cover,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -102,13 +110,18 @@ class SearchResultList extends StatelessWidget {
                     );
                   },
                   child: Container(
-                    width: 120,
+                    width: _tileWidth,
                     margin: const EdgeInsets.symmetric(horizontal: 8),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
-                          child: NetworkImageWidget(imageUrl: tvShow.posterUrl),
+                          child: NetworkImageWidget(
+                            imageUrl: tvShow.posterUrl,
+                            width: _tileWidth,
+                            height: _tileHeight,
+                            fit: BoxFit.cover,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Text(

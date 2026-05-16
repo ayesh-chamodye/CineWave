@@ -7,9 +7,15 @@ class TVDetailRemoteDataSource {
 
   TVDetailRemoteDataSource({required this.apiClient});
 
-  Future<TVShow> getTvDetail(int tvId) async {
+  /// Fetches full TV-show detail by scraping the TMDB TV page.
+  Future<TVShow> getTvDetail(int tvId, {String? tmdbUrl}) async {
+    final url = tmdbUrl ??
+        'https://www.themoviedb.org/tv/$tvId';
     final response =
-        await apiClient.get(ApiEndpoints.tvDetail(tvId));
-    return TVShow.fromJson(response.data);
+        await apiClient.get(ApiEndpoints.scrapeTV(url));
+    final data = response.data is Map<String, dynamic>
+        ? response.data as Map<String, dynamic>
+        : <String, dynamic>{};
+    return TVShow.fromJson(data);
   }
 }
