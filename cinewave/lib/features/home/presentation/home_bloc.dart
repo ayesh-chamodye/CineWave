@@ -6,21 +6,6 @@ import 'package:cinewave/core/models/media_models.dart';
 part 'home_event.dart';
 part 'home_state.dart';
 
-/// Reads the `popular` array produced by the legacy `/api/home` endpoint
-/// and returns only items whose `mediaType` matches [type].
-///
-/// Returns `null` when `popular` is absent or not a list.
-List<dynamic>? _extractFromPopular(
-    Map<String, dynamic> data, String type) {
-  final popular = data['popular'];
-  if (popular is! List) return null;
-  final lowerType = type.toLowerCase();
-  return popular.where((item) =>
-      item is Map &&
-      (item['mediaType'] ?? '').toString().toLowerCase() == lowerType
-  ).toList();
-}
-
 class HomeBloc extends Bloc<HomeEvent, HomeState> {
   final HomeRepository homeRepository;
 
@@ -32,31 +17,22 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       LoadHomeData event, Emitter<HomeState> emit) async {
     emit(HomeLoading());
     try {
+      // Both movies and TV always come from their /all endpoints (first 5).
+      // The /api/home response is only used for the trending section below.
       final Map<String, dynamic> data = await homeRepository.getHomeData();
 
-      // ── Movies & TV ─────────────────────────────────────────────────────
-      // The data source returns the raw response.  The backend may produce
-      // either of two formats:
-      //
-      // 1. New:  { movies: [...], tvShows: [...], trendingMovies: [...] }
-      // 2. Old:  { popular: [{ mediaType:"movie"|"tv", ... }, ...],
-      //            trending:   [...] }
-      //
-      // We read `movies`/`tvShows` first (new format) and fall back to
-      // scanning `popular` for the matching `mediaType`.
-      final List<dynamic> moviesJson =
-          (data['movies'] as List<dynamic>?) ??
-          _extractFromPopular(data, 'movie') ??
-          const <dynamic>[];
-      final List<dynamic> tvShowsJson =
-          (data['tvShows'] as List<dynamic>?) ??
-          _extractFromPopular(data, 'tv') ??
-          const <dynamic>[];
+      List<Movie> movies;
+      List<TVShow> tvShows;
 
-      final List<Movie> movies =
-          moviesJson.map((json) => Movie.fromJson(json)).toList();
-      final List<TVShow> tvShows =
-          tvShowsJson.map((json) => TVShow.fromJson(json)).toList();
+      movies = (await homeRepository.getFirstFiveMoviesJson())
+          .map((j) => Movie.fromJson(j))
+          .toList();
+      tvShows = (await homeRepository.getFirstFiveTvJson())
+          .map((j) => TVShow.fromJson(j))
+          .toList();
+
+      movies = movies.take(5).toList();
+      tvShows = tvShows.take(5).toList();
 
       // ── Featured ────────────────────────────────────────────────────────
       Movie? featuredMovie;

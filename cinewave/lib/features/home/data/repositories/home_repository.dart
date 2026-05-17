@@ -8,4 +8,12 @@ class HomeRepository {
   Future<Map<String, dynamic>> getHomeData() async {
     return await homeRemoteDataSource.getHomeData();
   }
+
+  Future<List<dynamic>> getFirstFiveMoviesJson() async {
+    return await homeRemoteDataSource.getFirstFiveMoviesJson();
+  }
+
+  Future<List<dynamic>> getFirstFiveTvJson() async {
+    return await homeRemoteDataSource.getFirstFiveTvJson();
+  }
 }

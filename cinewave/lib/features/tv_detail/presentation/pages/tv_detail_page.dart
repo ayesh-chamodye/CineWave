@@ -185,8 +185,8 @@ class _TVDetailPageState extends State<TVDetailPage> {
                             // ── Season strip ─────────────────────────────────────
                             _buildSeasonStrip(context),
                             const SizedBox(height: 16),
-                            // ── 30-episode list ──────────────────────────────────
-                            _buildEpisodeList(),
+                            // ── Episode numbers in small squares ──────────────────
+                            _buildEpisodeGrid(),
                           ],
                         )),
                   const SizedBox(height: 8),
@@ -264,138 +264,63 @@ class _TVDetailPageState extends State<TVDetailPage> {
     );
   }
 
-  /// Builds a scrollable vertical list of 30 episode cards.
-  Widget _buildEpisodeList() {
+  /// Builds a wrapped grid of small episode-number squares.
+  Widget _buildEpisodeGrid() {
     final tmdbId = _tmdbId;
     if (tmdbId == null) return const SizedBox.shrink();
 
-    return ListView.builder(
+    return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: 30,
+      gridDelegate:
+          const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 5),
       itemBuilder: (context, index) {
         final episode = index + 1;
-        return _EpisodeCard(
-          episode: episode,
-          onTap: () => _playEpisode(episode),
+        return Padding(
+          padding: const EdgeInsets.all(3),
+          child: _EpisodeSquare(
+            episode: episode,
+            onTap: () => _playEpisode(episode),
+            isSelected: episode == _episode,
+          ),
         );
       },
     );
   }
 }
 
-const _kCardH = 90.0;
-const _kCardThumbW = 132.0;
-const _kCardGap = 12.0;
-
-class _EpisodeCard extends StatelessWidget {
+class _EpisodeSquare extends StatelessWidget {
   final int episode;
   final VoidCallback onTap;
+  final bool isSelected;
 
-  const _EpisodeCard({required this.episode, required this.onTap});
+  const _EpisodeSquare({
+    required this.episode,
+    required this.onTap,
+    this.isSelected = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: _kCardGap),
+    return AspectRatio(
+      aspectRatio: 1,
       child: Material(
-        color: Colors.transparent,
+        color: isSelected
+            ? Theme.of(context).primaryColor
+            : const Color(0xFF2A2A2A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         child: InkWell(
           onTap: onTap,
-          borderRadius: const BorderRadius.all(Radius.circular(8)),
-          child: Container(
-            height: _kCardH,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              color: const Color(0xFF1F1F1F),
-            ),
-            child: Row(
-              children: [
-                // Thumbnail placeholder
-                ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(8),
-                    bottomLeft: Radius.circular(8),
-                  ),
-                  child: Container(
-                    width: _kCardThumbW,
-                    color: const Color(0xFF2A2A2A),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Center(
-                          child: Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.06),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.play_arrow,
-                              color: Colors.white.withValues(alpha: 0.35),
-                              size: 24,
-                            ),
-                          ),
-                        ),
-                        const Positioned.fill(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [Colors.transparent, Colors.black38],
-                                stops: [0.45, 1.0],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 1),
-                // Episode number + play button
-                Expanded(
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.03),
-                      borderRadius: const BorderRadius.only(
-                        topRight: Radius.circular(8),
-                        bottomRight: Radius.circular(8),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Text(
-                          'Episode $episode',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const Spacer(),
-                        Material(
-                          color: Colors.white10,
-                          shape: const CircleBorder(),
-                          child: InkWell(
-                            onTap: onTap,
-                            customBorder: const CircleBorder(),
-                            child: const Padding(
-                              padding: EdgeInsets.all(7),
-                              child: Icon(Icons.play_arrow,
-                                  color: Colors.white, size: 14),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+          borderRadius: BorderRadius.circular(6),
+          child: Center(
+            child: Text(
+              '$episode',
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.white70,
+                fontSize: 14,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              ),
             ),
           ),
         ),

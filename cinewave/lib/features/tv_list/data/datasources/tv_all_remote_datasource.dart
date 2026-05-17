@@ -23,7 +23,9 @@ class TVAllRemoteDataSource {
     final data = response.data as Map<String, dynamic>;
 
     final List<dynamic> jsonList =
-        (data['tvShows'] as List<dynamic>?) ?? const <dynamic>[];
+        (data['results'] as List<dynamic>?) ??
+        (data['tvShows'] as List<dynamic>?) ??
+        const <dynamic>[];
     final int currentPage = (data['page'] as int?) ?? 1;
     final int totalPages = (data['totalPages'] as int?) ?? 1;
 

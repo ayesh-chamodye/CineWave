@@ -1,19 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:cinewave/core/constants/app_constants.dart';
 import 'package:cinewave/shared/widgets/iframe_video_player.dart';
-import 'package:cinewave/shared/widgets/server_picker_dialog.dart';
 
-typedef void PlayNextCallback(String nextVideoUrl, String? title);
+typedef PlayNextCallback = void Function(String nextVideoUrl, String? title);
 
-/// Full-screen **landscape** video-player page with built-in server switching.
-///
-/// Features
-///  ─────────
-///  * Locks device to landscape only while visible
-///  * Hides status bar and navigation bar (immersive) — restored on dispose
-///  * **Server badge** (top-right) — tap to open a radio-list dialog and
-///    switch between Silk / 111 Movies / PrimeSrc instantly
+/// Full-screen **landscape** video-player page, immmersive with auto-orientation lock.
 class LandscapeVideoPlayerPage extends StatefulWidget {
   final String videoUrl;
   final String? title;
@@ -38,14 +29,9 @@ class LandscapeVideoPlayerPage extends StatefulWidget {
 }
 
 class _LandscapeVideoPlayerPageState extends State<LandscapeVideoPlayerPage> {
-  late String _currentEmbedUrl;
-  late AppServer _selectedServer;
-
   @override
   void initState() {
     super.initState();
-    _currentEmbedUrl = widget.videoUrl;
-    _selectedServer = _detectServer(widget.videoUrl);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         SystemChrome.setPreferredOrientations([
@@ -59,15 +45,6 @@ class _LandscapeVideoPlayerPageState extends State<LandscapeVideoPlayerPage> {
       }
     });
   }
-
-  AppServer _detectServer(String url) {
-    try {
-      return AppServer.byHost(Uri.parse(url).host) ?? AppServer.defaultServer;
-    } catch (_) {
-      return AppServer.defaultServer;
-    }
-  }
-
   @override
   void dispose() {
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
@@ -76,26 +53,6 @@ class _LandscapeVideoPlayerPageState extends State<LandscapeVideoPlayerPage> {
       overlays: SystemUiOverlay.values,
     );
     super.dispose();
-  }
-
-  /// Opens the server-picker dialog.  When a new server is chosen the embed
-  /// URL host is swapped and the WebView reloads.
-  Future<void> _openServerPicker() async {
-    if (!mounted) return;
-    final chosen = await showModalBottomSheet<AppServer>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => ServerPickerDialog(currentEmbedUrl: _currentEmbedUrl),
-    );
-    if (chosen == null || chosen.host == _selectedServer.host) return;
-
-    final newUrl = chosen.rebuild(_currentEmbedUrl);
-    setState(() {
-      _selectedServer = chosen;
-      _currentEmbedUrl = newUrl;
-    });
-    AppConstants.selectedServer = chosen;
   }
 
   @override
@@ -110,46 +67,11 @@ class _LandscapeVideoPlayerPageState extends State<LandscapeVideoPlayerPage> {
             left: true,
             right: true,
             child: IframeVideoPlayer(
-              embedUrl: _currentEmbedUrl,
+              embedUrl: widget.videoUrl,
               fillRemainingSpace: true,
               onEndOfVideo: widget.onPlayNext != null
                   ? () => _advanceToNext(widget.onPlayNext!)
                   : null,
-            ),
-          ),
-          // ── Server badge (top-right) ─────────────────────────────────────
-          Positioned(
-            top: 8,
-            right: 12,
-            child: Material(
-              color: _selectedServer.color,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: InkWell(
-                onTap: _openServerPicker,
-                borderRadius: BorderRadius.circular(20),
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        _selectedServer.label,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      const Icon(Icons.swap_horiz,
-                          color: Colors.white, size: 14),
-                    ],
-                  ),
-                ),
-              ),
             ),
           ),
         ],

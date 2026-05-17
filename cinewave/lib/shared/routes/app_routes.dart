@@ -5,6 +5,7 @@ import 'package:cinewave/features/movie_detail/presentation/pages/movie_detail_p
 import 'package:cinewave/features/tv_detail/presentation/pages/tv_detail_page.dart';
 import 'package:cinewave/features/all_media/presentation/all_media_screen.dart';
 import 'package:cinewave/shared/widgets/landscape_video_player.dart';
+import 'package:cinewave/features/home/presentation/pages/iframe_test_page.dart';
 import 'package:cinewave/splash_page.dart';
 
 class AppRoutes {
@@ -52,6 +53,15 @@ class AppRoutes {
             isTv: (args?['isTv'] as bool?) ?? false,
             seasonNumber: args?['seasonNumber'] as int?,
             episodeNumber: args?['episodeNumber'] as int?,
+          ),
+          settings: settings,
+        );
+      case '/iframe-test':
+        final args =
+            settings.arguments as Map<String, dynamic>?;
+        return MaterialPageRoute(
+          builder: (_) => IframeTestPage(
+            embedUrl: args?['embedUrl'] as String? ?? '',
           ),
           settings: settings,
         );

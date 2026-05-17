@@ -41,36 +41,41 @@ class IframeVideoPlayer extends StatefulWidget {
 class _IframeVideoPlayerState extends State<IframeVideoPlayer> {
   late final WebViewController _controller;
   bool _endedReported = false;
+  String _loadedUrl = '';
 
   @override
   void initState() {
     super.initState();
-    _buildController(Uri.parse(widget.embedUrl));
+    _controller = WebViewController();
+    _setupController();
+    _controller.loadRequest(Uri.parse(widget.embedUrl));
+    _loadedUrl = widget.embedUrl;
   }
 
-  void _buildController(Uri initialUri) {
-    _controller = WebViewController()
+  void _setupController() {
+    _controller
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
         NavigationDelegate(
           onNavigationRequest: (NavigationRequest request) {
-            final uri = request.url;
-            if (uri.isEmpty) return NavigationDecision.prevent;
-            final requestUri = Uri.tryParse(uri);
-            if (requestUri == null) return NavigationDecision.prevent;
-            final host = requestUri.host;
-            // Block only pop-up / ad / tracker navigations.
-            // In-page navigation and player-chain redirects are free to flow.
+            // Block pop-up / new-tab navigations (ad popups, external links via target=_blank / window.open)
+            if (!request.isMainFrame) return NavigationDecision.prevent;
+
+            // Block known ad / tracker domains (player redirects and video CDNs never use these hosts)
+            final host = Uri.tryParse(request.url)?.host ?? '';
             return host.contains('googleads') ||
                     host.contains('doubleclick') ||
                     host.contains('facebook.com/tr') ||
-                    host.contains('adservice')
+                    host.contains('adservice') ||
+                    host.contains('pagead') ||
+                    host.contains('doubleverify') ||
+                    host.contains('googlesyndication') ||
+                    host.contains('pubads.g.doubleclick')
                 ? NavigationDecision.prevent
                 : NavigationDecision.navigate;
           },
           onPageFinished: (_) => _injectEndWatcher(),
-          onWebResourceError: (WebResourceError error) {
-            // Ignore sub-resource / CORS errors — they don't break playback.
+          onWebResourceError: (error) {
             if (error.isForMainFrame ?? false) return;
           },
         ),
@@ -86,8 +91,17 @@ class _IframeVideoPlayerState extends State<IframeVideoPlayer> {
             widget.onEndOfVideo?.call();
           }
         },
-      )
-      ..loadRequest(initialUri);
+      );
+  }
+
+  @override
+  void didUpdateWidget(covariant IframeVideoPlayer old) {
+    super.didUpdateWidget(old);
+    if (widget.embedUrl != _loadedUrl) {
+      _endedReported = false;
+      _loadedUrl = widget.embedUrl;
+      _controller.loadRequest(Uri.parse(widget.embedUrl));
+    }
   }
 
   /// Injects JS to detect the `<video>` `ended` event inside the embed page.

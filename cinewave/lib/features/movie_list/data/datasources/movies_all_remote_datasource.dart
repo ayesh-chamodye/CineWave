@@ -23,11 +23,17 @@ class MoviesAllRemoteDataSource {
   }
 
   /// Shared JSON-parsing logic used by both `fetchPage` and `searchMovies`.
+  ///
+  /// Supports three response shapes:
+  ///  - Search:  `{ results: [...] }`
+  ///  - All:     `{ movies: [...], page: N, totalPages: N }`
   ApiPageResult<Movie> _parseResponse(Response response) {
     final data = response.data as Map<String, dynamic>;
 
     final List<dynamic> jsonList =
-        (data['movies'] as List<dynamic>?) ?? const <dynamic>[];
+        (data['results'] as List<dynamic>?) ??
+        (data['movies'] as List<dynamic>?) ??
+        const <dynamic>[];
     final int currentPage = (data['page'] as int?) ?? 1;
     final int totalPages = (data['totalPages'] as int?) ?? 1;
 
