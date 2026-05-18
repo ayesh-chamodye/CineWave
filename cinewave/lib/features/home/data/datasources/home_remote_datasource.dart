@@ -28,8 +28,9 @@ class HomeRemoteDataSource {
     try {
       final response =
           await apiClient.get(ApiEndpoints.moviesAll(1));
-      final items = (response.data as List<dynamic>?) ??
-          const <dynamic>[];
+      final data = response.data as Map<String, dynamic>;
+      final items =
+          (data['movies'] as List<dynamic>?) ?? const <dynamic>[];
       return items.take(5).toList();
     } catch (_) {
       return const <dynamic>[];
@@ -42,8 +43,9 @@ class HomeRemoteDataSource {
     try {
       final response =
           await apiClient.get(ApiEndpoints.tvAll(1));
-      final items = (response.data as List<dynamic>?) ??
-          const <dynamic>[];
+      final data = response.data as Map<String, dynamic>;
+      final items =
+          (data['tvShows'] as List<dynamic>?) ?? const <dynamic>[];
       return items.take(5).toList();
     } catch (_) {
       return const <dynamic>[];

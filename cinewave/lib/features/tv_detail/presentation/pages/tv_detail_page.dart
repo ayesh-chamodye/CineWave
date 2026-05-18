@@ -21,7 +21,6 @@ class _TVDetailPageState extends State<TVDetailPage> {
   String _playerUrl = '';
   String? _videoUrl;
   bool _tvParseOk = false;
-  int? _tmdbId;
   int _season = 1;
   int _episode = 1;
 
@@ -36,7 +35,6 @@ class _TVDetailPageState extends State<TVDetailPage> {
         _tvShow = raw;
         _playerUrl = raw.playerUrl;
         _videoUrl = raw.videoUrl;
-        _tmdbId = raw.id;
       });
       _parseEmbedUrl(raw);
     });
@@ -55,6 +53,22 @@ class _TVDetailPageState extends State<TVDetailPage> {
         });
       }
     } catch (_) {}
+  }
+
+  void _onSeasonSelected(int season) {
+    setState(() {
+      _season = season;
+      _episode = 1; // reset to first episode when season changes
+    });
+  }
+
+  int get _episodeCountForCurrentSeason {
+    final seasons = _tvShow?.seasons;
+    if (seasons == null || seasons.isEmpty) return 0;
+    for (final s in seasons) {
+      if (s.seasonNumber == _season) return s.episodeCount;
+    }
+    return 0;
   }
 
   /// Called by `_EpisodeCard` to open the player for a specific episode.
@@ -202,77 +216,60 @@ class _TVDetailPageState extends State<TVDetailPage> {
 
   // ── Episodes helpers ─────────────────────────────────────────────────────────
 
-  /// Builds a [Row] containing ◀ arrow, a scrollable season chip strip, and ▶ arrow.
+  /// Builds a horizontally-scrolling strip of season chips for every season
+  /// returned by the TMDB scrape.  Arrow buttons are omitted so the list
+  /// scrolls naturally when there are more seasons than fit on screen.
   Widget _buildSeasonStrip(BuildContext context) {
-    final seasons = List.generate(5, (i) => _season + i);
+    final seasons = _tvShow?.seasons;
+    if (seasons == null || seasons.isEmpty) return const SizedBox.shrink();
 
-    return Row(
-      children: [
-        // ◀
-        IconButton(
-          onPressed: _season > 1 ? () => setState(() => _season--) : null,
-          icon: const Icon(Icons.chevron_left, color: Colors.white54),
-          visualDensity: VisualDensity.compact,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-        ),
-        // Season chips
-        Expanded(
-          child: SizedBox(
-            height: 32,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: seasons.length,
-              itemBuilder: (context, index) {
-                final s = seasons[index];
-                final active = s == _season;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
-                    label: Text('S$s'),
-                    selected: active,
-                    onSelected: (_) => setState(() => _season = s),
-                    labelStyle: TextStyle(
-                      color: active ? Colors.black : Colors.white70,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    backgroundColor: Colors.white10,
-                    selectedColor: Colors.white,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      side: BorderSide(
-                        color: active ? Colors.white : Colors.white10,
-                      ),
-                    ),
-                  ),
-                );
-              },
+    return SizedBox(
+      height: 34,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: seasons.length,
+        itemBuilder: (context, index) {
+          final s = seasons[index];
+          final active = s.seasonNumber == _season;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChip(
+              label: Text(s.name),
+              selected: active,
+              onSelected: (_) => _onSeasonSelected(s.seasonNumber),
+              labelStyle: TextStyle(
+                color: active ? Colors.black : Colors.white70,
+                fontWeight: FontWeight.w600,
+              ),
+              backgroundColor: Colors.white10,
+              selectedColor: Colors.white,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(
+                  color: active ? Colors.white : Colors.white10,
+                ),
+              ),
             ),
-          ),
-        ),
-        // ▶
-        IconButton(
-          onPressed: () => setState(() => _season++),
-          icon: const Icon(Icons.chevron_right, color: Colors.white54),
-          visualDensity: VisualDensity.compact,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-        ),
-      ],
+          );
+        },
+      ),
     );
   }
 
-  /// Builds a wrapped grid of small episode-number squares.
+  /// Builds a wrapped grid of small episode-number squares, one per episode
+  /// in the currently selected season (as reported by the TMDB scrape API).
   Widget _buildEpisodeGrid() {
-    final tmdbId = _tmdbId;
-    if (tmdbId == null) return const SizedBox.shrink();
+    if (_tvShow == null) return const SizedBox.shrink();
+
+    final episodeCount = _episodeCountForCurrentSeason;
+    if (episodeCount <= 0) return const SizedBox.shrink();
 
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: 30,
+      itemCount: episodeCount,
       gridDelegate:
           const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 5),
       itemBuilder: (context, index) {

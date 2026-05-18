@@ -69,6 +69,7 @@ class _LandscapeVideoPlayerPageState extends State<LandscapeVideoPlayerPage> {
             child: IframeVideoPlayer(
               embedUrl: widget.videoUrl,
               fillRemainingSpace: true,
+              onBack: () => Navigator.of(context).pop(),
               onEndOfVideo: widget.onPlayNext != null
                   ? () => _advanceToNext(widget.onPlayNext!)
                   : null,
