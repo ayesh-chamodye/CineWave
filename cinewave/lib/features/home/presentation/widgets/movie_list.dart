@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:cinewave/core/models/media_models.dart';
 import 'package:cinewave/shared/widgets/network_image.dart';
 
@@ -19,8 +20,7 @@ class MovieList extends StatelessWidget {
     return SizedBox(
       height: 200,
       child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        cacheExtent: 600,
+        scrollCacheExtent: ScrollCacheExtent.pixels(600), scrollDirection: Axis.horizontal,
         addAutomaticKeepAlives: true,
         itemCount: movies.length,
         itemBuilder: (context, index) {

@@ -44,6 +44,8 @@ dependencies:
 
   # Video player — webview iframe for Videasy embeds
   webview_flutter: ^4.10.0
+  webview_flutter_android: ^4.0.0
+  webview_flutter_wkwebview: ^3.13.0
 
   # Caching and image loading
   cached_network_image: ^3.2.0

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cinewave/features/tv_detail/presentation/tv_detail_bloc.dart';
 import 'package:cinewave/features/tv_detail/data/repositories/tv_detail_repository.dart';
@@ -103,8 +104,7 @@ class _TVDetailPageState extends State<TVDetailPage> {
           tvDetailRepository: context.read<TVDetailRepository>(),
         )..add(LoadTVDetail(tvShow: tvShow)),
         child: CustomScrollView(
-          cacheExtent: 2000,
-          slivers: [
+          scrollCacheExtent: ScrollCacheExtent.pixels(2000), slivers: [
             SliverAppBar(
               expandedHeight: 300,
               pinned: true,

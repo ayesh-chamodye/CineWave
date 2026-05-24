@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cinewave/features/movie_detail/presentation/movie_detail_bloc.dart';
 import 'package:cinewave/features/movie_detail/data/repositories/movie_detail_repository.dart';
@@ -23,8 +24,7 @@ class MovieDetailPage extends StatelessWidget {
           movieDetailRepository: context.read<MovieDetailRepository>(),
         )..add(LoadMovieDetail(movie: movie)),
         child: CustomScrollView(
-          cacheExtent: 2000,
-          slivers: [
+          scrollCacheExtent: ScrollCacheExtent.pixels(2000), slivers: [
             SliverAppBar(
               expandedHeight: 300,
               pinned: true,

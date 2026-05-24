@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:cinewave/core/models/media_models.dart';
 import 'package:cinewave/shared/widgets/network_image.dart';
 
@@ -18,8 +19,7 @@ class SearchResultList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      cacheExtent: 600,
-      addAutomaticKeepAlives: true,
+      scrollCacheExtent: ScrollCacheExtent.pixels(600), addAutomaticKeepAlives: true,
       children: [
         if (movies.isNotEmpty) ...[
           const Padding(
@@ -36,8 +36,7 @@ class SearchResultList extends StatelessWidget {
           SizedBox(
             height: 200,
             child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              cacheExtent: 600,
+              scrollCacheExtent: ScrollCacheExtent.pixels(600), scrollDirection: Axis.horizontal,
               addAutomaticKeepAlives: true,
               itemCount: movies.length,
               itemBuilder: (context, index) {
@@ -96,8 +95,7 @@ class SearchResultList extends StatelessWidget {
           SizedBox(
             height: 200,
             child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              cacheExtent: 600,
+              scrollCacheExtent: ScrollCacheExtent.pixels(600), scrollDirection: Axis.horizontal,
               addAutomaticKeepAlives: true,
               itemCount: tvShows.length,
               itemBuilder: (context, index) {

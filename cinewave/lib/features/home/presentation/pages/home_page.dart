@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cinewave/features/home/presentation/home_bloc.dart';
 import 'package:cinewave/features/home/presentation/widgets/movie_list.dart';
@@ -29,8 +30,7 @@ class _HomePageState extends State<HomePage> {
             return _homeLoadingSkeleton();
           } else if (state is HomeLoaded) {
             return CustomScrollView(
-              cacheExtent: 600,
-              slivers: [
+              scrollCacheExtent: ScrollCacheExtent.pixels(600), slivers: [
                 // App Bar
                 SliverAppBar(
                   backgroundColor: Colors.black.withValues(alpha: 0.8),
