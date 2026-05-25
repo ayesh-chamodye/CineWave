@@ -264,18 +264,14 @@ class _TrendingSlide extends StatelessWidget {
                       padding: const EdgeInsets.only(top: 12),
                       child: TextButton.icon(
                         onPressed: () {
-                          final playUrl = movie.playerUrl.isNotEmpty
-                              ? movie.playerUrl
-                              : movie.videoUrl ?? '';
-                          if (playUrl.isNotEmpty) {
-                            Navigator.of(context).pushNamed(
-                              '/video-player',
-                              arguments: {
-                                'videoUrl': playUrl,
-                                'title': movie.title,
-                              },
-                            );
-                          }
+                          Navigator.of(context).pushNamed(
+                            '/video-player',
+                            arguments: {
+                              'tmdbId': movie.id.toString(),
+                              'title': movie.title,
+                              'type': 'movie',
+                            },
+                          );
                         },
                         icon: Container(
                           padding: const EdgeInsets.all(5),

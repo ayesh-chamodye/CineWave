@@ -14,6 +14,10 @@ import 'package:cinewave/features/tv_detail/presentation/tv_detail_bloc.dart';
 import 'package:cinewave/features/tv_detail/data/repositories/tv_detail_repository.dart';
 import 'package:cinewave/features/tv_detail/data/datasources/tv_detail_remote_datasource.dart';
 import 'package:cinewave/core/network/api_client.dart';
+import 'package:cinewave/core/database/database_helper.dart';
+import 'package:cinewave/features/downloads/data/datasources/download_local_datasource.dart';
+import 'package:cinewave/features/downloads/presentation/bloc/download_bloc.dart';
+import 'package:cinewave/features/downloads/presentation/bloc/download_event.dart';
 import 'package:cinewave/shared/routes/app_routes.dart';
 
 void main() {
@@ -55,9 +59,19 @@ class CineWaveApp extends StatelessWidget {
             ),
           ),
         ),
+        RepositoryProvider(
+          create: (_) => DownloadLocalDataSource(
+            dbHelper: DatabaseHelper.instance,
+          ),
+        ),
       ],
       child: MultiBlocProvider(
         providers: [
+          BlocProvider(
+            create: (context) => DownloadBloc(
+              localDataSource: context.read<DownloadLocalDataSource>(),
+            )..add(LoadDownloads()),
+          ),
           BlocProvider(
             create: (context) => HomeBloc(
               homeRepository: context.read<HomeRepository>(),

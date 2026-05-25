@@ -1,26 +1,29 @@
+import 'dart:io';
+import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:cinewave/shared/widgets/iframe_video_player.dart';
-
-typedef PlayNextCallback = void Function(String nextVideoUrl, String? title);
+import 'package:cinewave/shared/widgets/streamex_player.dart';
+import 'package:video_player/video_player.dart';
 
 /// Full-screen **landscape** video-player page, immmersive with auto-orientation lock.
 class LandscapeVideoPlayerPage extends StatefulWidget {
-  final String videoUrl;
   final String? title;
   final bool isTv;
   final int? seasonNumber;
   final int? episodeNumber;
-  final PlayNextCallback? onPlayNext;
+  final String? tmdbId;
+  final String? videoUrl;
+  final bool isLocal;
 
   const LandscapeVideoPlayerPage({
     super.key,
-    required this.videoUrl,
     this.title,
     this.isTv = false,
     this.seasonNumber,
     this.episodeNumber,
-    this.onPlayNext,
+    this.tmdbId,
+    this.videoUrl,
+    this.isLocal = false,
   });
 
   @override
@@ -29,9 +32,15 @@ class LandscapeVideoPlayerPage extends StatefulWidget {
 }
 
 class _LandscapeVideoPlayerPageState extends State<LandscapeVideoPlayerPage> {
+  VideoPlayerController? _videoPlayerController;
+  ChewieController? _chewieController;
+
   @override
   void initState() {
     super.initState();
+    if (widget.isLocal && widget.videoUrl != null) {
+      _initializeLocalPlayer();
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         SystemChrome.setPreferredOrientations([
@@ -45,8 +54,23 @@ class _LandscapeVideoPlayerPageState extends State<LandscapeVideoPlayerPage> {
       }
     });
   }
+
+  Future<void> _initializeLocalPlayer() async {
+    _videoPlayerController = VideoPlayerController.file(File(widget.videoUrl!));
+    await _videoPlayerController!.initialize();
+    _chewieController = ChewieController(
+      videoPlayerController: _videoPlayerController!,
+      autoPlay: true,
+      looping: false,
+      aspectRatio: _videoPlayerController!.value.aspectRatio,
+    );
+    setState(() {});
+  }
+
   @override
   void dispose() {
+    _videoPlayerController?.dispose();
+    _chewieController?.dispose();
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.edgeToEdge,
@@ -57,54 +81,51 @@ class _LandscapeVideoPlayerPageState extends State<LandscapeVideoPlayerPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.isLocal) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: _chewieController != null
+            ? Chewie(controller: _chewieController!)
+            : const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (widget.tmdbId == null || widget.tmdbId!.isEmpty) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text("Invalid Content ID",
+                  style: TextStyle(color: Colors.white)),
+              TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Go Back"))
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          SafeArea(
-            top: true,
-            bottom: true,
-            left: true,
-            right: true,
-            child: IframeVideoPlayer(
-              embedUrl: widget.videoUrl,
-              title: widget.title,
-              fillRemainingSpace: true,
-              onBack: () => Navigator.of(context).pop(),
-              onEndOfVideo: widget.onPlayNext != null
-                  ? () => _advanceToNext(widget.onPlayNext!)
-                  : null,
-            ),
-          ),
-        ],
+      body: SafeArea(
+        top: true,
+        bottom: true,
+        left: true,
+        right: true,
+        child: StreamexPlayer(
+          tmdbId: widget.tmdbId!,
+          isTv: widget.isTv,
+          season: widget.seasonNumber,
+          episode: widget.episodeNumber,
+          title: widget.title,
+          onBack: () => Navigator.of(context).pop(),
+        ),
       ),
     );
   }
-
-  // ── Auto-play next episode helper ──────────────────────────────────────────
-
-  void _advanceToNext(PlayNextCallback callback) {
-    final nextEp = ((widget.episodeNumber ?? 1) + 1);
-    final nextSeason = widget.seasonNumber ?? 1;
-    final idPart = _extractShowId(widget.videoUrl);
-
-    String nextUrl;
-    if (idPart != null && widget.isTv) {
-      nextUrl = 'https://player.videasy.net/tv/$idPart/$nextSeason/$nextEp';
-    } else {
-      nextUrl = widget.videoUrl;
-    }
-
-    callback(nextUrl, widget.title);
-  }
-
-  String? _extractShowId(String url) {
-    try {
-      final segs = Uri.parse(url).pathSegments;
-      if (segs.length >= 2 && segs[0] == 'tv') return segs[1];
-      return null;
-    } catch (_) {
-      return null;
-    }
-  }
 }
+
+

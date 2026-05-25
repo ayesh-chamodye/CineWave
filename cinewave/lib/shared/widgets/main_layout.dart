@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cinewave/features/home/presentation/pages/home_page.dart';
 import 'package:cinewave/features/search/presentation/pages/search_page.dart';
+import 'package:cinewave/features/downloads/presentation/pages/downloads_page.dart';
+import 'package:cinewave/features/settings/presentation/pages/settings_page.dart';
 
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
@@ -15,8 +17,8 @@ class _MainLayoutState extends State<MainLayout> {
   final List<Widget> _pages = [
     const HomePage(),
     const SearchPage(),
-    const _PlaceholderPage(title: 'Downloads'),
-    const _PlaceholderPage(title: 'Profile'),
+    const DownloadsPage(),
+    const SettingsPage(),
   ];
 
   @override
@@ -53,9 +55,9 @@ class _MainLayoutState extends State<MainLayout> {
             label: 'Downloads',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline, size: 24),
-            activeIcon: Icon(Icons.person, size: 28),
-            label: 'Profile',
+            icon: Icon(Icons.settings_outlined, size: 24),
+            activeIcon: Icon(Icons.settings, size: 28),
+            label: 'Settings',
           ),
         ],
       ),

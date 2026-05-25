@@ -6,6 +6,9 @@ import 'package:cinewave/features/movie_detail/data/repositories/movie_detail_re
 import 'package:cinewave/features/movie_detail/presentation/widgets/detail_info.dart';
 import 'package:cinewave/shared/widgets/network_image.dart';
 import 'package:cinewave/core/models/media_models.dart';
+import 'package:cinewave/shared/utils/link_extractor.dart';
+import 'package:cinewave/features/downloads/presentation/bloc/download_bloc.dart';
+import 'package:cinewave/features/downloads/presentation/bloc/download_event.dart';
 
 class MovieDetailPage extends StatelessWidget {
   static const String routeName = '/movie-detail';
@@ -53,18 +56,14 @@ class MovieDetailPage extends StatelessWidget {
                           Expanded(
                             child: ElevatedButton.icon(
                               onPressed: () {
-                                final playUrl = movie.playerUrl.isNotEmpty
-                                    ? movie.playerUrl
-                                    : movie.videoUrl ?? '';
-                                if (playUrl.isNotEmpty) {
-                                  Navigator.of(context).pushNamed(
-                                    '/video-player',
-                                    arguments: {
-                                      'videoUrl': playUrl,
-                                      'title': movie.title,
-                                    },
-                                  );
-                                }
+                                Navigator.of(context).pushNamed(
+                                  '/video-player',
+                                  arguments: {
+                                    'tmdbId': movie.id.toString(),
+                                    'title': movie.title,
+                                    'type': 'movie',
+                                  },
+                                );
                               },
                               icon: const Icon(Icons.play_arrow, color: Colors.white),
                               label: const Text('Play', style: TextStyle(color: Colors.white)),
@@ -78,16 +77,38 @@ class MovieDetailPage extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 12),
-                          // Bookmark button
+                          // Download button
                           IconButton(
-                            onPressed: () {},
+                            onPressed: () async {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Extracting link...')),
+                              );
+                              final embedUrl = 'https://play.xpass.top/e/movie/${movie.id}';
+                              final downloadUrl = await LinkExtractor.extract(embedUrl);
+                              if (downloadUrl != null) {
+                                if (context.mounted) {
+                                  context.read<DownloadBloc>().add(
+                                    StartDownload(movie: movie, url: downloadUrl),
+                                  );
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Download started')),
+                                  );
+                                }
+                              } else {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Failed to extract download link')),
+                                  );
+                                }
+                              }
+                            },
                             icon: Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
                                 border: Border.all(color: Colors.white38),
                                 borderRadius: BorderRadius.circular(4),
                               ),
-                              child: const Icon(Icons.bookmark_border, color: Colors.white70),
+                              child: const Icon(Icons.download, color: Colors.white70),
                             ),
                           ),
                           const SizedBox(width: 8),

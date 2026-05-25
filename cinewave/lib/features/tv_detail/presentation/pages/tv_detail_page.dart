@@ -7,6 +7,9 @@ import 'package:cinewave/features/tv_detail/presentation/widgets/detail_info.dar
 import 'package:cinewave/shared/widgets/landscape_video_player.dart';
 import 'package:cinewave/shared/widgets/network_image.dart';
 import 'package:cinewave/core/models/media_models.dart';
+import 'package:cinewave/shared/utils/link_extractor.dart';
+import 'package:cinewave/features/downloads/presentation/bloc/download_bloc.dart';
+import 'package:cinewave/features/downloads/presentation/bloc/download_event.dart';
 
 class TVDetailPage extends StatefulWidget {
   static const String routeName = '/tv-detail';
@@ -42,18 +45,21 @@ class _TVDetailPageState extends State<TVDetailPage> {
   }
 
   void _parseEmbedUrl(TVShow show) {
-    final raw = show.playerUrl.isNotEmpty ? show.playerUrl : (show.videoUrl ?? '');
-    if (raw.isEmpty) return;
-    try {
-      final segs = Uri.parse(raw).pathSegments;
-      if (segs.length >= 4 && segs[0] == 'tv') {
-        setState(() {
+    final raw =
+        show.playerUrl.isNotEmpty ? show.playerUrl : (show.videoUrl ?? '');
+    if (raw.isEmpty && show.seasons.isEmpty) return;
+
+    setState(() {
+      _tvParseOk = true;
+      try {
+        final uri = Uri.parse(raw);
+        final segs = uri.pathSegments;
+        if (segs.length >= 4 && segs[0] == 'tv') {
           _season = int.tryParse(segs[2]) ?? 1;
           _episode = int.tryParse(segs[3]) ?? 1;
-          _tvParseOk = true;
-        });
-      }
-    } catch (_) {}
+        }
+      } catch (_) {}
+    });
   }
 
   void _onSeasonSelected(int season) {
@@ -72,22 +78,20 @@ class _TVDetailPageState extends State<TVDetailPage> {
     return 0;
   }
 
-  /// Called by `_EpisodeCard` to open the player for a specific episode.
+  /// Called by `_EpisodeSquare` to open the player for a specific episode.
   void _playEpisode(int episode) {
-    if (episode < 1) return;
-    final epUrl = _playerUrl.replaceAll(
-      RegExp(r'/\d+/\d+$'),
-      '/$_season/$episode',
-    );
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => LandscapeVideoPlayerPage(
-          videoUrl: epUrl,
-          isTv: true,
-          seasonNumber: _season,
-          episodeNumber: episode,
-        ),
-      ),
+    if (episode < 1 || _tvShow == null) return;
+
+    Navigator.of(context).pushNamed(
+      '/video-player',
+      arguments: {
+        'tmdbId': _tvShow!.id.toString(),
+        'title': _tvShow!.name,
+        'isTv': true,
+        'seasonNumber': _season,
+        'episodeNumber': episode,
+        'type': 'tv',
+      },
     );
   }
 
@@ -145,14 +149,41 @@ class _TVDetailPageState extends State<TVDetailPage> {
                           ),
                           const SizedBox(width: 12),
                           IconButton(
-                            onPressed: () {},
+                            onPressed: () async {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Extracting link...')),
+                              );
+                              final embedUrl = 'https://play.xpass.top/e/tv/${tvShow.id}/$_season/$_episode';
+                              final downloadUrl = await LinkExtractor.extract(embedUrl);
+                              if (downloadUrl != null) {
+                                if (context.mounted) {
+                                  context.read<DownloadBloc>().add(
+                                    StartDownload(
+                                      tvShow: tvShow,
+                                      season: _season,
+                                      episode: _episode,
+                                      url: downloadUrl,
+                                    ),
+                                  );
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Download started')),
+                                  );
+                                }
+                              } else {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Failed to extract download link')),
+                                  );
+                                }
+                              }
+                            },
                             icon: Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
                                 border: Border.all(color: Colors.white38),
                                 borderRadius: BorderRadius.circular(4),
                               ),
-                              child: const Icon(Icons.bookmark_border, color: Colors.white70),
+                              child: const Icon(Icons.download, color: Colors.white70),
                             ),
                           ),
                           const SizedBox(width: 8),
