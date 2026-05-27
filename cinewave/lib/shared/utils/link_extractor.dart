@@ -1,50 +1,201 @@
 import 'dart:async';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+
+class ExtractionResult {
+  final String url;
+  final Map<String, String> headers;
+
+  ExtractionResult({required this.url, required this.headers});
+}
 
 class LinkExtractor {
+  static const String agentUrl = 'https://movie-scrape-silk.vercel.app/agent.js';
+  static HeadlessInAppWebView? _headlessWebView;
+  static String? _cachedAgentJs;
+  static final _dio = Dio();
+
   static Future<String?> extract(String embedUrl) async {
-    final Completer<String?> completer = Completer<String?>();
-    HeadlessInAppWebView? headlessWebView;
+    final result = await extractWithHeaders(embedUrl);
+    return result?.url;
+  }
 
-    headlessWebView = HeadlessInAppWebView(
-      initialUrlRequest: URLRequest(
-        url: WebUri(embedUrl),
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15',
-          'Referer': 'https://streamex.sh/',
-        },
-      ),
-      initialSettings: InAppWebViewSettings(
-        mediaPlaybackRequiresUserGesture: false,
-        allowsInlineMediaPlayback: true,
-        javaScriptEnabled: true,
-      ),
-      onLoadResource: (controller, resource) {
-        final url = resource.url.toString();
-        // Look for m3u8 or mp4
-        if ((url.contains('.m3u8') || url.contains('.mp4')) &&
-            !url.contains('blob:') &&
-            !url.contains('subtitle')) {
-          if (!completer.isCompleted) {
-            debugPrint('🎯 Extracted Link: $url');
-            completer.complete(url);
-          }
-        }
-      },
-    );
-
-    await headlessWebView.run();
+  static Future<ExtractionResult?> extractWithHeaders(String embedUrl) async {
+    final completer = Completer<ExtractionResult?>();
     
+    String? episodeHref;
+    if (embedUrl.contains('/e/movie/')) {
+      final id = embedUrl.split('/e/movie/').last;
+      episodeHref = 'streamex:movie:$id';
+    } else if (embedUrl.contains('/e/tv/')) {
+      final parts = embedUrl.split('/e/tv/').last.split('/');
+      if (parts.length >= 3) {
+        episodeHref = 'streamex:tv:${parts[0]}:${parts[1]}:${parts[2]}';
+      }
+    }
+
+    if (episodeHref == null) {
+      debugPrint('❌ LinkExtractor: Could not parse episodeHref from $embedUrl');
+      return null;
+    }
+
     try {
-      final result = await completer.future.timeout(
-        const Duration(seconds: 20),
+      if (_cachedAgentJs == null) {
+        debugPrint('🌐 LinkExtractor: Fetching agent.js...');
+        final res = await _dio.get(agentUrl);
+        _cachedAgentJs = res.data.toString();
+        debugPrint('✅ LinkExtractor: agent.js fetched (${_cachedAgentJs!.length} bytes)');
+      }
+
+      _headlessWebView = HeadlessInAppWebView(
+        initialData: InAppWebViewInitialData(data: """
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body>
+              <script>console.log('WebView: Context initialized');</script>
+            </body>
+          </html>
+        """),
+        initialSettings: InAppWebViewSettings(
+          javaScriptEnabled: true,
+          userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15',
+        ),
+        onConsoleMessage: (controller, message) {
+          debugPrint('🌐 LinkExtractor JS: ${message.message}');
+        },
+        onReceivedError: (controller, request, error) {
+          debugPrint('❌ LinkExtractor WebView Error: ${error.description}');
+        },
+        onWebViewCreated: (controller) {
+          controller.addJavaScriptHandler(handlerName: 'fetchv2', callback: (args) async {
+            final String url = args[0];
+            final Map<String, dynamic> headers = Map<String, dynamic>.from(args[1]);
+            final String method = args[2];
+            final String? body = args[3]?.toString();
+
+            try {
+              final res = await _dio.request(
+                url,
+                data: (body != null && body.isNotEmpty && body != '""' && body != "''" && body != "null") ? body : null,
+                options: Options(
+                  method: method,
+                  headers: headers,
+                  validateStatus: (_) => true,
+                  responseType: ResponseType.plain,
+                ),
+              );
+
+              final normalizedHeaders = <String, String>{};
+              res.headers.forEach((name, values) {
+                normalizedHeaders[name.toLowerCase()] = values.join(', ');
+              });
+
+              final bodyText = res.data?.toString() ?? '';
+
+              return {
+                'status': res.statusCode,
+                'ok': (res.statusCode ?? 0) >= 200 && (res.statusCode ?? 0) < 300,
+                'headers': normalizedHeaders,
+                'body': bodyText,
+                'bodyBytes': bodyText.length,
+              };
+            } catch (e) {
+              return {
+                'status': 500,
+                'ok': false,
+                'headers': {},
+                'body': e.toString(),
+                'bodyBytes': 0,
+              };
+            }
+          });
+
+          controller.addJavaScriptHandler(handlerName: 'extractionFinished', callback: (args) {
+            final resultJson = args[0];
+            if (resultJson != null) {
+              try {
+                final data = json.decode(resultJson);
+                if (data['streams'] != null && data['streams'] is List && data['streams'].length >= 2) {
+                  final String streamUrl = data['streams'][1].toString();
+                  final Map<String, dynamic> rawHeaders = data['headers'] ?? {};
+                  final Map<String, String> headers = rawHeaders.map((k, v) => MapEntry(k, v.toString()));
+                  
+                  debugPrint('🎯 LinkExtractor: Success! URL: $streamUrl');
+                  completer.complete(ExtractionResult(url: streamUrl, headers: headers));
+                } else if (data['error'] != null) {
+                  debugPrint("❌ LinkExtractor: Agent error: ${data['error']}");
+                  completer.complete(null);
+                } else {
+                  debugPrint("❌ LinkExtractor: No playable streams found");
+                  completer.complete(null);
+                }
+              } catch (e) {
+                debugPrint("❌ LinkExtractor: Parse failed: $e");
+                completer.complete(null);
+              }
+            } else {
+              completer.complete(null);
+            }
+          });
+        },
+        onLoadStop: (controller, url) async {
+          debugPrint('🚀 LinkExtractor: Context ready. Starting agent for $episodeHref');
+          await controller.evaluateJavascript(source: """
+            (async function() {
+              window.fetchv2 = async function(url, headers, method, body) {
+                const result = await window.flutter_inappwebview.callHandler('fetchv2', url, headers, method, body);
+                return {
+                  status: result.status,
+                  ok: result.ok,
+                  headers: result.headers,
+                  contentType: result.headers['content-type'] || '',
+                  body: result.body,
+                  bodyBytes: result.bodyBytes || 0,
+                  text: async () => result.body,
+                  json: async () => JSON.parse(result.body)
+                };
+              };
+              
+              window.exports = {};
+              
+              try {
+                ${_cachedAgentJs!}
+                
+                console.log('LinkExtractor: Calling extractStreamUrl...');
+                const result = await extractStreamUrl('$episodeHref', 'en');
+                window.flutter_inappwebview.callHandler('extractionFinished', JSON.stringify(result));
+              } catch (e) {
+                console.error('LinkExtractor: Agent Exception: ' + e.message);
+                window.flutter_inappwebview.callHandler('extractionFinished', JSON.stringify({ error: e.message }));
+              }
+            })();
+          """);
+        },
       );
+
+      await _headlessWebView!.run();
+      
+      final result = await completer.future.timeout(
+        const Duration(seconds: 60),
+        onTimeout: () {
+          debugPrint('⏰ LinkExtractor: Timed out after 60s');
+          return null;
+        },
+      );
+
       return result;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('❌ LinkExtractor: Critical failure: $e');
       return null;
     } finally {
-      await headlessWebView.dispose();
+      _headlessWebView?.dispose();
+      _headlessWebView = null;
     }
   }
 }

@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
+import 'package:cinewave/shared/utils/link_extractor.dart';
 
 class StreamexPlayer extends StatefulWidget {
   final String tmdbId;
@@ -27,38 +27,25 @@ class StreamexPlayer extends StatefulWidget {
 }
 
 class _StreamexPlayerState extends State<StreamexPlayer> {
-  InAppWebViewController? _webViewController;
   VideoPlayerController? _videoPlayerController;
   ChewieController? _chewieController;
-  
-  String? _extractedUrl;
-  final List<String> _extractedSubtitles = [];
+
   bool _isExtracting = true;
   String _errorMessage = '';
-  
-  final String _xpassBaseUrl = 'https://play.xpass.top';
-  final String _userAgent = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15';
+
+  static const String _xpassBaseUrl = 'https://play.xpass.top';
 
   String get _embedUrl {
     if (widget.isTv) {
       return '$_xpassBaseUrl/e/tv/${widget.tmdbId}/${widget.season ?? 1}/${widget.episode ?? 1}';
-    } else {
-      return '$_xpassBaseUrl/e/movie/${widget.tmdbId}';
     }
+    return '$_xpassBaseUrl/e/movie/${widget.tmdbId}';
   }
 
   @override
   void initState() {
     super.initState();
-    // Timeout for extraction
-    Future.delayed(const Duration(seconds: 25), () {
-      if (mounted && _extractedUrl == null && _errorMessage.isEmpty) {
-        setState(() {
-          _isExtracting = false;
-          _errorMessage = 'Loading timed out. Service might be unavailable.';
-        });
-      }
-    });
+    _startExtraction();
   }
 
   @override
@@ -68,21 +55,55 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
     super.dispose();
   }
 
-  Future<void> _initializeNativePlayer(String url) async {
-    if (_videoPlayerController != null) return;
+  // ---------------------------------------------------------------------------
+  // Extraction
+  // ---------------------------------------------------------------------------
+
+  Future<void> _startExtraction() async {
+    try {
+      final result = await LinkExtractor.extractWithHeaders(_embedUrl).timeout(
+        const Duration(seconds: 45),
+        onTimeout: () => null,
+      );
+
+      if (!mounted) return;
+
+      if (result == null || result.url.isEmpty) {
+        setState(() {
+          _isExtracting = false;
+          _errorMessage = 'No playable stream found. The title may not be available right now.';
+        });
+        return;
+      }
+
+      await _initializeNativePlayer(result.url, result.headers);
+    } catch (e) {
+      debugPrint('❌ Extraction error: $e');
+      if (mounted) {
+        setState(() {
+          _isExtracting = false;
+          _errorMessage = 'Failed to load stream: $e';
+        });
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Player init
+  // ---------------------------------------------------------------------------
+
+  Future<void> _initializeNativePlayer(String url, Map<String, String> headers) async {
+    debugPrint('▶️ Initializing player: $url');
 
     _videoPlayerController = VideoPlayerController.networkUrl(
       Uri.parse(url),
-      httpHeaders: {
-        'Referer': _embedUrl,
-        'Origin': _xpassBaseUrl,
-        'User-Agent': _userAgent,
-      },
+      httpHeaders: headers,
+      formatHint: VideoFormat.hls,
     );
 
     try {
       await _videoPlayerController!.initialize();
-      
+
       _chewieController = ChewieController(
         videoPlayerController: _videoPlayerController!,
         autoPlay: true,
@@ -97,15 +118,6 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
           backgroundColor: Colors.white24,
           bufferedColor: Colors.white54,
         ),
-        additionalOptions: (context) {
-          return [
-            OptionItem(
-              onTap: (ctx) => _showSubtitlePicker(ctx),
-              iconData: Icons.subtitles,
-              title: 'Subtitles',
-            ),
-          ];
-        },
       );
 
       if (mounted) {
@@ -114,66 +126,31 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
         });
       }
     } catch (e) {
-      debugPrint('❌ Native Player Init Error: $e');
+      debugPrint('❌ Player init error: $e');
       if (mounted) {
         setState(() {
           _isExtracting = false;
-          _errorMessage = 'Failed to load video stream: $e';
+          _errorMessage = 'Failed to initialize video player: $e';
         });
       }
     }
   }
 
-  void _showSubtitlePicker(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF1E1E1E),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
-      ),
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Select Subtitle',
-                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 10),
-              if (_extractedSubtitles.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(20.0),
-                  child: Text('No external subtitles found.', style: TextStyle(color: Colors.white54)),
-                )
-              else
-                Flexible(
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: _extractedSubtitles.length,
-                    itemBuilder: (context, index) {
-                      final subUrl = _extractedSubtitles[index];
-                      final name = subUrl.split('/').last.split('?').first;
-                      return ListTile(
-                        leading: const Icon(Icons.subtitles, color: Colors.white70),
-                        title: Text(name, style: const TextStyle(color: Colors.white)),
-                        onTap: () {
-                          // Note: Changing subtitles at runtime in Chewie/VideoPlayer 
-                          // usually requires re-initializing or using a specific Subtitle provider.
-                          // For now, we'll just log and pop.
-                          Navigator.pop(context);
-                        },
-                      );
-                    },
-                  ),
-                ),
-            ],
-          ),
-        );
-      },
-    );
+  // ---------------------------------------------------------------------------
+  // Back navigation
+  // ---------------------------------------------------------------------------
+
+  void _handleBack() {
+    if (widget.onBack != null) {
+      widget.onBack!();
+    } else {
+      Navigator.of(context).pop();
+    }
   }
+
+  // ---------------------------------------------------------------------------
+  // Build
+  // ---------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -181,136 +158,106 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // 🕸️ Hidden WebView for extraction
-          if (_extractedUrl == null)
-            Opacity(
-              opacity: 0.01,
-              child: SizedBox(
-                width: 1,
-                height: 1,
-                child: InAppWebView(
-                  initialUrlRequest: URLRequest(
-                    url: WebUri(_embedUrl),
-                    headers: {
-                      'User-Agent': _userAgent,
-                      'Referer': 'https://streamex.sh/',
-                    },
-                  ),
-                  initialSettings: InAppWebViewSettings(
-                    mediaPlaybackRequiresUserGesture: false,
-                    allowsInlineMediaPlayback: true,
-                    javaScriptEnabled: true,
-                    userAgent: _userAgent,
-                  ),
-                  onWebViewCreated: (controller) {
-                    _webViewController = controller;
-                  },
-                  onLoadResource: (controller, resource) {
-                    final url = resource.url.toString();
-                    
-                    // Intercept subtitle links
-                    if (url.contains('.vtt') || url.contains('.srt')) {
-                      if (!_extractedSubtitles.contains(url)) {
-                        debugPrint('📝 Subtitle Extracted: $url');
-                        _extractedSubtitles.add(url);
-                      }
-                    }
-
-                    // Intercept m3u8 playlist links
-                    if (url.contains('.m3u8') && 
-                        !url.contains('blob:') && 
-                        !url.contains('subtitle')) {
-                      debugPrint('🎯 StreameX Extracted: $url');
-                      if (mounted && _extractedUrl == null) {
-                        setState(() {
-                          _extractedUrl = url;
-                        });
-                        _initializeNativePlayer(url);
-                      }
-                    }
-                  },
-                ),
-              ),
-            ),
-
-          // 📺 Native Player UI
+          // 📺 Native player
           if (_chewieController != null)
             Container(
               color: Colors.black,
               child: Chewie(controller: _chewieController!),
             ),
 
-          // ⌛ Loading Overlay
-          if (_isExtracting)
-            Container(
-              color: Colors.black,
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const CircularProgressIndicator(color: Colors.blueAccent),
-                    const SizedBox(height: 24),
-                    Text(
-                      'Loading ${widget.title ?? "your media"}...',
-                      style: const TextStyle(color: Colors.white70, fontSize: 16),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else if (_errorMessage.isNotEmpty)
-            Container(
-              color: Colors.black,
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.error_outline, color: Colors.red, size: 48),
-                      const SizedBox(height: 16),
-                      Text(
-                        _errorMessage,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: () {
-                          if (widget.onBack != null) {
-                             widget.onBack!();
-                          } else {
-                             Navigator.of(context).pop();
-                          }
-                        },
-                        child: const Text('Go Back'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+          // ⏳ Extracting / loading overlay
+          if (_isExtracting) _buildLoadingOverlay(),
 
-          // 🔙 Back Button
-          Positioned(
-            top: 40,
-            left: 16,
-            child: Material(
-              color: Colors.black45,
-              shape: const CircleBorder(),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () {
-                   if (widget.onBack != null) {
-                     widget.onBack!();
-                   } else {
-                     Navigator.of(context).pop();
-                   }
-                },
-              ),
-            ),
-          ),
+          // ❌ Error overlay
+          if (!_isExtracting && _errorMessage.isNotEmpty)
+            _buildErrorOverlay(),
+
+          // 🔙 Back button (always visible)
+          _buildBackButton(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingOverlay() {
+    return Container(
+      color: Colors.black,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(color: Colors.blueAccent),
+            const SizedBox(height: 24),
+            Text(
+              'Loading ${widget.title ?? "your media"}...',
+              style: const TextStyle(color: Colors.white70, fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Finding best available stream',
+              style: TextStyle(color: Colors.white38, fontSize: 13),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorOverlay() {
+    return Container(
+      color: Colors.black,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red, size: 48),
+              const SizedBox(height: 16),
+              Text(
+                _errorMessage,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white, fontSize: 15),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _isExtracting = true;
+                    _errorMessage = '';
+                  });
+                  _startExtraction();
+                },
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blueAccent,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: _handleBack,
+                child: const Text('Go Back', style: TextStyle(color: Colors.white54)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBackButton() {
+    return Positioned(
+      top: 40,
+      left: 16,
+      child: Material(
+        color: Colors.black45,
+        shape: const CircleBorder(),
+        child: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: _handleBack,
+        ),
       ),
     );
   }
