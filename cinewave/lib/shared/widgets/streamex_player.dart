@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'package:cinewave/shared/utils/link_extractor.dart';
+import 'package:cinewave/shared/utils/video_cache.dart';
 
 class StreamexPlayer extends StatefulWidget {
   final String tmdbId;
@@ -32,6 +34,8 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
 
   bool _isExtracting = true;
   String _errorMessage = '';
+
+  final VideoCacheManager _videoCacheManager = VideoCacheManager();
 
   static const String _xpassBaseUrl = 'https://play.xpass.top';
 
@@ -95,13 +99,25 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
   Future<void> _initializeNativePlayer(String url, Map<String, String> headers) async {
     debugPrint('▶️ Initializing player: $url');
 
-    _videoPlayerController = VideoPlayerController.networkUrl(
-      Uri.parse(url),
-      httpHeaders: headers,
-      formatHint: VideoFormat.hls,
-    );
+    // Check if this is an HLS manifest and try to use cached version
+    final String manifestSource = await _getPotentiallyCachedManifest(url, headers);
+    final bool isLocalManifest = !manifestSource.startsWith('http');
 
     try {
+      if (isLocalManifest) {
+        // Handle local manifest file
+        debugPrint('📱 Initializing player with local manifest: $manifestSource');
+        _videoPlayerController = VideoPlayerController.file(File(manifestSource));
+      } else {
+        // Handle network manifest URL
+        debugPrint('🌐 Initializing player with network manifest: $manifestSource');
+        _videoPlayerController = VideoPlayerController.networkUrl(
+          Uri.parse(manifestSource),
+          httpHeaders: headers,
+          formatHint: VideoFormat.hls,
+        );
+      }
+
       await _videoPlayerController!.initialize();
 
       _chewieController = ChewieController(
@@ -133,6 +149,31 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
           _errorMessage = 'Failed to initialize video player: $e';
         });
       }
+    }
+  }
+
+  /// Returns a cached manifest file path if available, otherwise returns the original URL
+  Future<String> _getPotentiallyCachedManifest(String url, Map<String, String> headers) async {
+    // Only attempt caching for HLS manifests
+    if (!url.toLowerCase().endsWith('.m3u8')) {
+      return url;
+    }
+
+    try {
+      // Check if we have a cached manifest
+      if (await _videoCacheManager.isCached(url)) {
+        debugPrint('📦 Using cached HLS manifest: $url');
+        final File cachedFile = await _videoCacheManager.getFile(url, headers: headers);
+        return cachedFile.path;
+      } else {
+        // Download and cache the manifest
+        debugPrint('💾 Downloading and caching HLS manifest: $url');
+        final File cachedFile = await _videoCacheManager.getFile(url, headers: headers);
+        return cachedFile.path;
+      }
+    } catch (e) {
+      debugPrint('⚠️ Failed to use cache for manifest, falling back to network: $e');
+      return url; // Fallback to original network URL
     }
   }
 

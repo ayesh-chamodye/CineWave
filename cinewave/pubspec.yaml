@@ -42,6 +42,7 @@ dependencies:
 
   # Network
   dio: ^5.4.1
+  http: ^1.1.0
 
   # Video player & WebViews
   flutter_inappwebview: ^6.1.5
@@ -51,6 +52,7 @@ dependencies:
   # Caching and image loading
   cached_network_image: ^3.2.0
   flutter_svg: ^2.0.0
+  flutter_cache_manager: ^3.3.0
 
   # Downloads & File System
   path_provider: ^2.1.2
