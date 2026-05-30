@@ -65,11 +65,12 @@ class _SettingsPageState extends State<SettingsPage> {
 
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: const Text('Settings', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.black,
-        elevation: 0,
-      ),
+       appBar: AppBar(
+         automaticallyImplyLeading: false,
+         title: const Text('Settings', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+         backgroundColor: Colors.black,
+         elevation: 0,
+       ),
       body: ListView(
         children: [
           _buildSectionHeader('Appearance'),

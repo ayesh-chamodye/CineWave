@@ -129,35 +129,35 @@ class _MoviesListPageState extends State<MoviesListPage> {
                 return CustomScrollView(
                   controller: _scrollController,
                   slivers: [
-                    SliverAppBar(
-                      backgroundColor:
-                          Colors.black.withValues(alpha: 0.8),
-                      elevation: 0,
-                      pinned: true,
-                      floating: false,
-                      leading: const BackButton(color: Colors.white),
-                      title: TextField(
-                        controller: _searchController,
-                        onChanged: _onSearchChanged,
-                        style: const TextStyle(color: Colors.white),
-                        cursorColor: Colors.white,
-                        decoration: InputDecoration(
-                          hintText: 'Search movies…',
-                          hintStyle:
-                              const TextStyle(color: Colors.white54),
-                          prefixIcon:
-                              const Icon(Icons.search, color: Colors.white54),
-                          filled: true,
-                          fillColor: Colors.white10,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide.none,
-                          ),
-                          contentPadding:
-                              const EdgeInsets.symmetric(vertical: 0),
-                        ),
-                      ),
-                    ),
+                 SliverAppBar(
+                       automaticallyImplyLeading: false,
+                       backgroundColor:
+                           Colors.black.withValues(alpha: 0.8),
+                       elevation: 0,
+                       pinned: true,
+                       floating: false,                      
+                       title: TextField(
+                         controller: _searchController,
+                         onChanged: _onSearchChanged,
+                         style: const TextStyle(color: Colors.white),
+                         cursorColor: Colors.white,
+                         decoration: InputDecoration(
+                           hintText: 'Search movies…',
+                           hintStyle:
+                               const TextStyle(color: Colors.white54),
+                           prefixIcon:
+                               const Icon(Icons.search, color: Colors.white54),
+                           filled: true,
+                           fillColor: Colors.white10,
+                           border: OutlineInputBorder(
+                             borderRadius: BorderRadius.circular(8),
+                             borderSide: BorderSide.none,
+                           ),
+                           contentPadding:
+                               const EdgeInsets.symmetric(vertical: 0),
+                         ),
+                       ),
+                     ),
                     if (movies.isEmpty)
                       const SliverFillRemaining(
                         child: Center(

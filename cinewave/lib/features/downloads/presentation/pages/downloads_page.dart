@@ -13,11 +13,12 @@ class DownloadsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: const Text('Downloads', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.black,
-        elevation: 0,
-      ),
+       appBar: AppBar(
+         automaticallyImplyLeading: false,
+         title: const Text('Downloads', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+         backgroundColor: Colors.black,
+         elevation: 0,
+       ),
       body: BlocBuilder<DownloadBloc, DownloadState>(
         builder: (context, state) {
           if (state is DownloadsLoading) {
