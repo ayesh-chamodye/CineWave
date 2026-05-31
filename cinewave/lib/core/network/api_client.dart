@@ -2,12 +2,14 @@ import 'package:dio/dio.dart';
 import 'package:cinewave/core/network/endpoints.dart';
 
 class ApiClient {
+  static const connectTimeout = Duration(minutes: 5);
+  static const receiveTimeout = Duration(minutes: 5);
   final Dio _dio;
 
   ApiClient() : _dio = Dio(BaseOptions(
     baseUrl: ApiEndpoints.baseUrl,
-    connectTimeout: const Duration(seconds: 20),
-    receiveTimeout: const Duration(seconds: 60),
+    connectTimeout: connectTimeout,
+    receiveTimeout: receiveTimeout,
   ));
 
   /// Performs a GET request returning the response body as a Map.
