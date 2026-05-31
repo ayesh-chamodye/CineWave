@@ -10,7 +10,6 @@ class StartDownload extends DownloadEvent {
   final int? season;
   final int? episode;
   final String url;
-  final String? headers;
 
   StartDownload({
     this.movie,
@@ -18,24 +17,10 @@ class StartDownload extends DownloadEvent {
     this.season,
     this.episode,
     required this.url,
-    this.headers,
   });
 }
 
 class DeleteDownload extends DownloadEvent {
   final String id;
   DeleteDownload(this.id);
-}
-
-class LoadStreamSources extends DownloadEvent {
-  final int tmdbId;
-  final String type;
-  final int? season;
-  final int? episode;
-  LoadStreamSources({
-    required this.tmdbId,
-    required this.type,
-    this.season,
-    this.episode,
-  });
 }

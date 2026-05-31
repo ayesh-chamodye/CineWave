@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 class SplashPage extends StatefulWidget {
@@ -9,18 +10,40 @@ class SplashPage extends StatefulWidget {
 
 class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
+  late final Animation<double> _fadeAnimation;
+  late final Animation<double> _scaleAnimation;
+  int _dotIndex = 0;
+  Timer? _dotTimer;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 900),
+      duration: const Duration(milliseconds: 1400),
       vsync: this,
-    )..repeat();
-    // Navigate to home page after a brief delay
-    Future.delayed(const Duration(seconds: 2), () {
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeIn),
+    );
+
+    _scaleAnimation = Tween<double>(begin: 0.9, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+    );
+
+    _controller.forward();
+
+    _dotTimer = Timer.periodic(const Duration(milliseconds: 400), (_) {
       if (mounted) {
-        _controller.dispose();
+        setState(() {
+          _dotIndex = (_dotIndex + 1) % 3;
+        });
+      }
+    });
+
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        _dotTimer?.cancel();
         Navigator.of(context).pushReplacementNamed('/');
       }
     });
@@ -28,6 +51,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
 
   @override
   void dispose() {
+    _dotTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -35,65 +59,50 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: Colors.black,
       body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // App Logo or Name
-            Image(image:  AssetImage('assets/logo.png'), width: 100, height: 100),
-            Text(
-              'CineWave',
-              style: TextStyle(
-                color: Theme.of(context).primaryColor,
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            return FadeTransition(
+              opacity: _fadeAnimation,
+              child: ScaleTransition(
+                scale: _scaleAnimation,
+                child: child,
               ),
-            ),
-            const SizedBox(height: 24),
-            // Optional: Add a loading indicator
-            const SizedBox(height: 24),
-            _DottedLoader(controller: _controller),
-          ],
+            );
+          },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset(
+                'assets/images/logo.png',
+                width: 120,
+                height: 120,
+                fit: BoxFit.contain,
+              ),
+              const SizedBox(height: 56),
+              _buildDots(),
+            ],
+          ),
         ),
       ),
     );
   }
-}
 
-class _DottedLoader extends StatelessWidget {
-  const _DottedLoader({required this.controller});
-
-  final AnimationController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    const totalDots = 3;
+  Widget _buildDots() {
     return Row(
       mainAxisSize: MainAxisSize.min,
-      children: List.generate(totalDots, (index) {
-        final anim = Tween<double>(begin: 0.4, end: 1)
-            .animate(CurvedAnimation(parent: controller, curve: Interval(
-          index / totalDots,
-          (index + 1) / totalDots,
-          curve: Curves.easeInOut,
-        )));
-        return AnimatedBuilder(
-          animation: anim,
-          builder: (context, child) {
-            return Opacity(
-              opacity: anim.value,
-              child: child,
-            );
-          },
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            width: 8,
-            height: 8,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-            ),
+      children: List.generate(3, (index) {
+        final active = index == _dotIndex;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          margin: const EdgeInsets.symmetric(horizontal: 5),
+          width: active ? 10 : 7,
+          height: active ? 10 : 7,
+          decoration: const BoxDecoration(
+            color: Colors.red,
+            shape: BoxShape.circle,
           ),
         );
       }),

@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cinewave/features/movie_detail/presentation/movie_detail_bloc.dart';
@@ -7,7 +6,6 @@ import 'package:cinewave/features/movie_detail/presentation/widgets/detail_info.
 import 'package:cinewave/shared/widgets/network_image.dart';
 import 'package:cinewave/features/downloads/presentation/bloc/download_bloc.dart';
 import 'package:cinewave/features/downloads/presentation/bloc/download_event.dart';
-import 'package:cinewave/features/downloads/presentation/bloc/download_state.dart';
 import 'package:cinewave/shared/widgets/source_selection_dialog.dart';
 import 'package:cinewave/core/models/media_models.dart';
 
@@ -29,29 +27,6 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   void initState() {
     super.initState();
     _movie = widget.movie;
-  }
-
-  Future<List<VylaSource>> _loadSources(int tmdbId) async {
-    final completer = Completer<List<VylaSource>>();
-    late final StreamSubscription<DownloadState> subscription;
-    subscription = context.read<DownloadBloc>().stream.listen((state) {
-      if (state is StreamSourcesLoaded) {
-        if (!mounted) return;
-        completer.complete(state.sources);
-        subscription.cancel();
-      } else if (state is StreamSourcesError) {
-        if (!mounted) return;
-        completer.completeError(state.message);
-        subscription.cancel();
-      }
-    });
-    
-    // Trigger the load
-    context.read<DownloadBloc>().add(
-      LoadStreamSources(tmdbId: tmdbId, type: 'movie'),
-    );
-    
-    return completer.future;
   }
 
   @override
@@ -84,7 +59,6 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 16),
-                  // Action Buttons Row
                   if (movie.playerUrl.isNotEmpty ||
                       (movie.videoUrl != null && movie.videoUrl!.isNotEmpty))
                     Padding(
@@ -121,10 +95,10 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                                 context: context,
                                 builder: (dialogContext) => SourceSelectionDialog(
                                   title: movie.title,
-                                  onLoadSources: () => _loadSources(movie.id),
-                                  onSourceSelected: (source) {
+                                  embedUrl: 'https://play.xpass.top/e/movie/${movie.id}',
+                                  onUrlResolved: (url) {
                                     context.read<DownloadBloc>().add(
-                                      StartDownload(movie: movie, url: source.m3u8),
+                                      StartDownload(movie: movie, url: url),
                                     );
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(content: Text('Download started')),

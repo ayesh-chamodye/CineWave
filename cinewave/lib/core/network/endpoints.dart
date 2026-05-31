@@ -21,19 +21,7 @@ class ApiEndpoints {
   /// Returns `{ tvShows: [...], page: N, totalPages: N }` — 20 items per page.
   static String tvAll(int page) => '/api/tv/all?page=$page';
 
-  static String stream(int tmdbId, String type,
-          {int? season, int? episode}) {
-    final params = <String, String>{
-      'id': tmdbId.toString(),
-      'type': type,
-    };
-    if (season != null) params['season'] = season.toString();
-    if (episode != null) params['episode'] = episode.toString();
-    final query = params.entries
-        .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
-        .join('&');
-    return '/api/stream?$query';
-  }
+
 
   // ── Scrape endpoints (new) ─────────────────────────────────────────────
   /// Scrapes a TMDB movie page and returns enriched JSON with a direct video URL.

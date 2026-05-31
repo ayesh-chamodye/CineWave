@@ -18,8 +18,6 @@ import 'package:cinewave/core/database/database_helper.dart';
 import 'package:cinewave/features/downloads/data/datasources/download_local_datasource.dart';
 import 'package:cinewave/features/downloads/presentation/bloc/download_bloc.dart';
 import 'package:cinewave/features/downloads/presentation/bloc/download_event.dart';
-import 'package:cinewave/features/downloads/data/datasources/stream_remote_datasource.dart';
-import 'package:cinewave/features/downloads/data/repositories/stream_repository.dart';
 import 'package:cinewave/shared/routes/app_routes.dart';
 
 void main() {
@@ -62,13 +60,6 @@ class CineWaveApp extends StatelessWidget {
           ),
         ),
         RepositoryProvider(
-          create: (_) => StreamRepository(
-            streamRemoteDataSource: StreamRemoteDataSource(
-              apiClient: ApiClient(),
-            ),
-          ),
-        ),
-        RepositoryProvider(
           create: (_) => DownloadLocalDataSource(
             dbHelper: DatabaseHelper.instance,
           ),
@@ -79,7 +70,6 @@ class CineWaveApp extends StatelessWidget {
         BlocProvider(
           create: (context) => DownloadBloc(
             localDataSource: context.read<DownloadLocalDataSource>(),
-            streamRepository: context.read<StreamRepository>(),
           )..add(LoadDownloads()),
         ),
           BlocProvider(

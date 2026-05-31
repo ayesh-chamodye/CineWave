@@ -1,43 +1,3 @@
-class VylaSource {
-  final String quality;
-  final String m3u8;
-
-  const VylaSource({required this.quality, required this.m3u8});
-
-  factory VylaSource.fromJson(Map<String, dynamic> json) {
-    return VylaSource(
-      quality: json['quality'] ?? 'Unknown',
-      m3u8: json['m3u8'] ?? '',
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {'quality': quality, 'm3u8': m3u8};
-  }
-}
-
-class Vyla {
-  final List<VylaSource> sources;
-  final int count;
-
-  const Vyla({required this.sources, required this.count});
-
-  factory Vyla.fromJson(Map<String, dynamic> json) {
-    final raw = json['sources'];
-    final sources = raw is List
-        ? raw.whereType<Map<String, dynamic>>().map((s) => VylaSource.fromJson(s)).toList()
-        : const <VylaSource>[];
-    return Vyla(
-      sources: sources,
-      count: json['count'] ?? sources.length,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {'sources': sources.map((s) => s.toJson()).toList(), 'count': count};
-  }
-}
-
 class Movie {
   final int id;
   final String title;
@@ -49,7 +9,6 @@ class Movie {
   final String? videoUrl;
   final String playerUrl;
   final String? tmdbUrl;
-  final Vyla? vyla;
 
   Movie({
     required this.id,
@@ -62,7 +21,6 @@ class Movie {
     this.videoUrl,
     this.playerUrl = '',
     this.tmdbUrl,
-    this.vyla,
   });
 
   factory Movie.fromJson(Map<String, dynamic> json) {
@@ -77,7 +35,6 @@ class Movie {
       videoUrl: json['videoUrl'] ?? json['video_url'] ?? json['trailer'] ?? '',
       playerUrl: json['playerUrl'] ?? '',
       tmdbUrl: json['tmdbUrl'] ?? json['tmdb_url'],
-      vyla: json['vyla'] != null ? Vyla.fromJson(json['vyla']) : null,
     );
   }
 
@@ -93,7 +50,6 @@ class Movie {
       'videoUrl': videoUrl,
       'playerUrl': playerUrl,
       'tmdbUrl': tmdbUrl,
-      'vyla': vyla?.toJson(),
     };
   }
 }
@@ -115,7 +71,6 @@ class TVShow {
   final int? numberOfSeasons;
   final int? numberOfEpisodes;
   final List<SeasonInfo> seasons;
-  final Vyla? vyla;
 
   TVShow({
     required this.id,
@@ -134,7 +89,6 @@ class TVShow {
     this.numberOfSeasons,
     this.numberOfEpisodes,
     this.seasons = const [],
-    this.vyla,
   });
 
   factory TVShow.fromJson(Map<String, dynamic> json) {
@@ -155,7 +109,6 @@ class TVShow {
       numberOfSeasons: json['numberOfSeasons'] ?? json['number_of_seasons'],
       numberOfEpisodes: json['numberOfEpisodes'] ?? json['number_of_episodes'],
       seasons: _parseSeasons(json['seasons']),
-      vyla: json['vyla'] != null ? Vyla.fromJson(json['vyla']) : null,
     );
   }
 
@@ -185,7 +138,6 @@ class TVShow {
       'numberOfSeasons': numberOfSeasons,
       'numberOfEpisodes': numberOfEpisodes,
       'seasons': seasons.map((s) => s.toJson()).toList(),
-      'vyla': vyla?.toJson(),
     };
   }
 }
@@ -231,7 +183,7 @@ class DownloadItem {
   final String title;
   final String posterUrl;
   final String filePath;
-  final String type; // 'movie' or 'tv'
+  final String type;
   final int? season;
   final int? episode;
   final int totalSize;

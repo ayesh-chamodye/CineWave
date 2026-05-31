@@ -25,6 +25,11 @@ class LinkExtractor {
     return result?.url;
   }
 
+  static Future<String?> resolve(String embedUrl) async {
+    final result = await extractWithHeaders(embedUrl);
+    return result?.url;
+  }
+
   static Future<ExtractionResult?> extractWithHeaders(String embedUrl) async {
     final completer = Completer<ExtractionResult?>();
     

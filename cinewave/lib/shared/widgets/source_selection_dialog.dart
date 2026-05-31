@@ -1,18 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:cinewave/core/models/media_models.dart';
+import 'package:cinewave/shared/utils/link_extractor.dart';
 
 class SourceSelectionDialog extends StatefulWidget {
   final String title;
-  final List<VylaSource>? sources;
-  final ValueChanged<VylaSource> onSourceSelected;
-  final Future<List<VylaSource>> Function()? onLoadSources;
+  final String embedUrl;
+  final ValueChanged<String> onUrlResolved;
 
   const SourceSelectionDialog({
     super.key,
     required this.title,
-    this.sources,
-    required this.onSourceSelected,
-    this.onLoadSources,
+    required this.embedUrl,
+    required this.onUrlResolved,
   });
 
   @override
@@ -20,29 +18,29 @@ class SourceSelectionDialog extends StatefulWidget {
 }
 
 class _SourceSelectionDialogState extends State<SourceSelectionDialog> {
-  List<VylaSource>? _loadedSources;
+  bool _loading = true;
+  String? _resolvedUrl;
   String? _error;
-  bool _loading = false;
 
   @override
   void initState() {
     super.initState();
-    if (widget.sources != null) {
-      _loadedSources = widget.sources;
-    } else if (widget.onLoadSources != null) {
-      _loading = true;
-      widget.onLoadSources!().then((sources) {
-        if (!mounted) return;
-        setState(() {
-          _loadedSources = sources;
-          _loading = false;
-        });
-      }).catchError((e) {
-        if (!mounted) return;
-        setState(() {
-          _error = e.toString();
-          _loading = false;
-        });
+    _resolve();
+  }
+
+  Future<void> _resolve() async {
+    try {
+      final url = await LinkExtractor.resolve(widget.embedUrl);
+      if (!mounted) return;
+      setState(() {
+        _resolvedUrl = url;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _loading = false;
       });
     }
   }
@@ -52,7 +50,7 @@ class _SourceSelectionDialogState extends State<SourceSelectionDialog> {
     return AlertDialog(
       backgroundColor: const Color(0xFF1A1A1A),
       title: Text(
-        'Select source for ${widget.title}',
+        'Download: ${widget.title}',
         style: const TextStyle(color: Colors.white),
       ),
       content: SizedBox(
@@ -72,32 +70,29 @@ class _SourceSelectionDialogState extends State<SourceSelectionDialog> {
                       textAlign: TextAlign.center,
                     ),
                   )
-                : _loadedSources == null || _loadedSources!.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'No sources available',
-                          style: TextStyle(color: Colors.white54),
-                        ),
-                      )
-                    : ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: _loadedSources!.length,
-                        itemBuilder: (context, index) {
-                          final source = _loadedSources![index];
-                          return ListTile(
-                            title: Text(
-                              source.quality,
-                              style: const TextStyle(color: Colors.white),
-                            ),
-                            trailing: const Icon(Icons.arrow_forward_ios,
-                                color: Colors.white54, size: 16),
-                            onTap: () {
-                              Navigator.of(context).pop();
-                              widget.onSourceSelected(source);
-                            },
-                          );
-                        },
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Stream resolved successfully',
+                        style: TextStyle(color: Colors.white),
                       ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          if (_resolvedUrl != null) {
+                            widget.onUrlResolved(_resolvedUrl!);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueAccent,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text('Start Download'),
+                      ),
+                    ],
+                  ),
       ),
       actions: [
         TextButton(

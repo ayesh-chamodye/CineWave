@@ -22,52 +22,15 @@ class _DownloadsPageState extends State<DownloadsPage> {
   final TextEditingController _searchController = TextEditingController();
   bool _showSearch = false;
 
-  Future<List<VylaSource>> _loadMovieSources(int tmdbId) async {
-    final completer = Completer<List<VylaSource>>();
-    late final StreamSubscription<DownloadState> subscription;
-    subscription = context.read<DownloadBloc>().stream.listen((state) {
-      if (state is StreamSourcesLoaded) {
-        if (!mounted) return;
-        completer.complete(state.sources);
-        subscription.cancel();
-      } else if (state is StreamSourcesError) {
-        if (!mounted) return;
-        completer.completeError(state.message);
-        subscription.cancel();
-      }
-    });
-    context.read<DownloadBloc>().add(LoadStreamSources(tmdbId: tmdbId, type: 'movie'));
-    return completer.future;
-  }
-
-  Future<List<VylaSource>> _loadTvSources(int tmdbId, int season, int episode) async {
-    final completer = Completer<List<VylaSource>>();
-    late final StreamSubscription<DownloadState> subscription;
-    subscription = context.read<DownloadBloc>().stream.listen((state) {
-      if (state is StreamSourcesLoaded) {
-        if (!mounted) return;
-        completer.complete(state.sources);
-        subscription.cancel();
-      } else if (state is StreamSourcesError) {
-        if (!mounted) return;
-        completer.completeError(state.message);
-        subscription.cancel();
-      }
-    });
-    context.read<DownloadBloc>().add(
-          LoadStreamSources(tmdbId: tmdbId, type: 'tv', season: season, episode: episode),
-        );
-    return completer.future;
-  }
-
   void _onMovieTap(Movie movie) {
+    final embedUrl = 'https://play.xpass.top/e/movie/${movie.id}';
     showDialog<void>(
       context: context,
       builder: (dialogContext) => SourceSelectionDialog(
         title: movie.title,
-        onLoadSources: () => _loadMovieSources(movie.id),
-        onSourceSelected: (source) {
-          context.read<DownloadBloc>().add(StartDownload(movie: movie, url: source.m3u8));
+        embedUrl: embedUrl,
+        onUrlResolved: (url) {
+          context.read<DownloadBloc>().add(StartDownload(movie: movie, url: url));
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Download started')),
           );
@@ -89,14 +52,15 @@ class _DownloadsPageState extends State<DownloadsPage> {
     final season = result['season']!;
     final episode = result['episode']!;
     if (!mounted) return;
+    final embedUrl = 'https://play.xpass.top/e/tv/${tvShow.id}/$season/$episode';
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => SourceSelectionDialog(
         title: '${tvShow.name} S${season.toString().padLeft(2, '0')}E${episode.toString().padLeft(2, '0')}',
-        onLoadSources: () => _loadTvSources(tvShow.id, season, episode),
-        onSourceSelected: (source) {
+        embedUrl: embedUrl,
+        onUrlResolved: (url) {
           context.read<DownloadBloc>().add(
-                StartDownload(tvShow: tvShow, season: season, episode: episode, url: source.m3u8),
+                StartDownload(tvShow: tvShow, season: season, episode: episode, url: url),
               );
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Download started')),
@@ -182,10 +146,8 @@ class _DownloadsPageState extends State<DownloadsPage> {
                     return const Padding(
                       padding: EdgeInsets.all(16),
                       child: Center(
-                        child: Text(
-                          'No results found',
-                          style: TextStyle(color: Colors.white54, fontSize: 16),
-                        ),
+                        child: Text('No results found',
+                            style: TextStyle(color: Colors.white54, fontSize: 16)),
                       ),
                     );
                   }
@@ -195,10 +157,8 @@ class _DownloadsPageState extends State<DownloadsPage> {
                       if (movies.isNotEmpty) ...[
                         const Padding(
                           padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-                          child: Text(
-                            'Movies',
-                            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                          ),
+                          child: Text('Movies',
+                              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                         ),
                         SizedBox(
                           height: 200,
@@ -207,10 +167,7 @@ class _DownloadsPageState extends State<DownloadsPage> {
                             itemCount: movies.length,
                             itemBuilder: (context, index) {
                               final movie = movies[index];
-                              return MediaResultTile.movie(
-                                movie: movie,
-                                onTap: () => _onMovieTap(movie),
-                              );
+                              return MediaResultTile.movie(movie: movie, onTap: () => _onMovieTap(movie));
                             },
                           ),
                         ),
@@ -218,10 +175,8 @@ class _DownloadsPageState extends State<DownloadsPage> {
                       if (tvShows.isNotEmpty) ...[
                         const Padding(
                           padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-                          child: Text(
-                            'TV Shows',
-                            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                          ),
+                          child: Text('TV Shows',
+                              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                         ),
                         SizedBox(
                           height: 200,
@@ -230,10 +185,7 @@ class _DownloadsPageState extends State<DownloadsPage> {
                             itemCount: tvShows.length,
                             itemBuilder: (context, index) {
                               final tvShow = tvShows[index];
-                              return MediaResultTile.tv(
-                                tvShow: tvShow,
-                                onTap: () => _onTvTap(tvShow),
-                              );
+                              return MediaResultTile.tv(tvShow: tvShow, onTap: () => _onTvTap(tvShow));
                             },
                           ),
                         ),
@@ -245,11 +197,8 @@ class _DownloadsPageState extends State<DownloadsPage> {
                   return Padding(
                     padding: const EdgeInsets.all(16),
                     child: Center(
-                      child: Text(
-                        searchState.message,
-                        style: const TextStyle(color: Colors.redAccent),
-                        textAlign: TextAlign.center,
-                      ),
+                      child: Text(searchState.message,
+                          style: const TextStyle(color: Colors.redAccent), textAlign: TextAlign.center),
                     ),
                   );
                 }
@@ -295,10 +244,8 @@ class _DownloadsPageState extends State<DownloadsPage> {
                     children: [
                       const Padding(
                         padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-                        child: Text(
-                          'Your Downloads',
-                          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
+                        child: Text('Your Downloads',
+                            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                       ),
                       ...state.items.map((item) => _DownloadTile(item: item)),
                     ],
@@ -307,9 +254,7 @@ class _DownloadsPageState extends State<DownloadsPage> {
                 if (state is DownloadError) {
                   return Padding(
                     padding: const EdgeInsets.all(16),
-                    child: Center(
-                      child: Text(state.message, style: const TextStyle(color: Colors.red)),
-                    ),
+                    child: Center(child: Text(state.message, style: const TextStyle(color: Colors.red))),
                   );
                 }
                 return const SizedBox.shrink();
@@ -360,30 +305,18 @@ class _DownloadTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      item.title,
-                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    Text(item.title,
+                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 4),
-                    Text(
-                      item.type == 'movie' ? 'Movie' : 'TV Show • S${item.season} E${item.episode}',
-                      style: const TextStyle(color: Colors.white54, fontSize: 12),
-                    ),
+                    Text(item.type == 'movie' ? 'Movie' : 'TV Show • S${item.season} E${item.episode}',
+                        style: const TextStyle(color: Colors.white54, fontSize: 12)),
                     const SizedBox(height: 12),
                     if (item.status == DownloadStatus.downloading) ...[
-                      LinearProgressIndicator(
-                        value: currentProgress,
-                        backgroundColor: Colors.white12,
-                        color: Colors.blueAccent,
-                        minHeight: 4,
-                      ),
+                      LinearProgressIndicator(value: currentProgress, backgroundColor: Colors.white12, color: Colors.blueAccent, minHeight: 4),
                       const SizedBox(height: 4),
-                      Text(
-                        '${(currentProgress * 100).toInt()}%',
-                        style: const TextStyle(color: Colors.blueAccent, fontSize: 11),
-                      ),
+                      Text('${(currentProgress * 100).toInt()}%', style: const TextStyle(color: Colors.blueAccent, fontSize: 11)),
                     ] else
                       _buildStatus(context),
                   ],

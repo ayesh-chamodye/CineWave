@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cinewave/core/models/media_models.dart';
 import 'package:cinewave/features/downloads/data/datasources/download_local_datasource.dart';
-import 'package:cinewave/features/downloads/data/repositories/stream_repository.dart';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -12,7 +11,6 @@ import 'download_state.dart';
 
 class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
   final DownloadLocalDataSource localDataSource;
-  final StreamRepository streamRepository;
   final Dio dio = Dio(BaseOptions(
     connectTimeout: const Duration(minutes: 5),
     receiveTimeout: const Duration(minutes: 5),
@@ -22,7 +20,6 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
 
   DownloadBloc({
     required this.localDataSource,
-    required this.streamRepository,
   }) : super(DownloadInitial()) {
     on<LoadDownloads>((event, emit) async {
       emit(DownloadsLoading());
@@ -94,21 +91,6 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
         await localDataSource.updateStatus(id, DownloadStatus.error);
         _stopProgressTimerIfEmpty();
         add(LoadDownloads());
-      }
-    });
-
-    on<LoadStreamSources>((event, emit) async {
-      emit(StreamSourcesLoading());
-      try {
-        final vyla = await streamRepository.getStreamLinks(
-          event.tmdbId,
-          event.type,
-          season: event.season,
-          episode: event.episode,
-        );
-        emit(StreamSourcesLoaded(sources: vyla.sources));
-      } catch (e) {
-        emit(StreamSourcesError(e.toString()));
       }
     });
 
