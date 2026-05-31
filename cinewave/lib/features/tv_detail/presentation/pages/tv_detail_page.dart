@@ -1,299 +1,172 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cinewave/features/tv_detail/presentation/tv_detail_bloc.dart';
 import 'package:cinewave/features/tv_detail/data/repositories/tv_detail_repository.dart';
-import 'package:cinewave/features/tv_detail/presentation/widgets/detail_info.dart';
-import 'package:cinewave/shared/widgets/landscape_video_player.dart';
 import 'package:cinewave/shared/widgets/network_image.dart';
-import 'package:cinewave/core/models/media_models.dart';
-import 'package:cinewave/shared/utils/link_extractor.dart';
 import 'package:cinewave/features/downloads/presentation/bloc/download_bloc.dart';
 import 'package:cinewave/features/downloads/presentation/bloc/download_event.dart';
+import 'package:cinewave/features/downloads/presentation/bloc/download_state.dart';
+import 'package:cinewave/shared/widgets/source_selection_dialog.dart';
+import 'package:cinewave/core/models/media_models.dart';
+import 'package:cinewave/features/tv_detail/presentation/widgets/detail_info.dart';
 
 class TVDetailPage extends StatefulWidget {
   static const String routeName = '/tv-detail';
 
-  const TVDetailPage({super.key});
+  final TVShow tvShow;
+
+  const TVDetailPage({super.key, required this.tvShow});
 
   @override
   State<TVDetailPage> createState() => _TVDetailPageState();
 }
 
 class _TVDetailPageState extends State<TVDetailPage> {
-  TVShow? _tvShow;
-  String _playerUrl = '';
-  String? _videoUrl;
-  bool _tvParseOk = false;
-  int _season = 1;
-  int _episode = 1;
+  TVShow? _currentTvShow;
+  int? _selectedSeason;
+  int? _selectedEpisode;
+  late final StreamSubscription<TVDetailState> _tvDetailSubscription;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final raw = ModalRoute.of(context)?.settings.arguments as TVShow?;
-      if (raw == null) return;
-      setState(() {
-        _tvShow = raw;
-        _playerUrl = raw.playerUrl;
-        _videoUrl = raw.videoUrl;
-      });
-      _parseEmbedUrl(raw);
-    });
-  }
-
-  void _parseEmbedUrl(TVShow show) {
-    final raw =
-        show.playerUrl.isNotEmpty ? show.playerUrl : (show.videoUrl ?? '');
-    if (raw.isEmpty && show.seasons.isEmpty) return;
-
-    setState(() {
-      _tvParseOk = true;
-      try {
-        final uri = Uri.parse(raw);
-        final segs = uri.pathSegments;
-        if (segs.length >= 4 && segs[0] == 'tv') {
-          _season = int.tryParse(segs[2]) ?? 1;
-          _episode = int.tryParse(segs[3]) ?? 1;
-        }
-      } catch (_) {}
-    });
-  }
-
-  void _onSeasonSelected(int season) {
-    setState(() {
-      _season = season;
-      _episode = 1; // reset to first episode when season changes
-    });
-  }
-
-  int get _episodeCountForCurrentSeason {
-    final seasons = _tvShow?.seasons;
-    if (seasons == null || seasons.isEmpty) return 0;
-    for (final s in seasons) {
-      if (s.seasonNumber == _season) return s.episodeCount;
+    _currentTvShow = widget.tvShow;
+    // Set initial selected season and episode based on the initial TVShow
+    if (_currentTvShow != null &&
+        _currentTvShow!.seasons.isNotEmpty) {
+      _selectedSeason = _currentTvShow!.seasons.first.seasonNumber;
+      _selectedEpisode = 1;
     }
-    return 0;
-  }
-
-  /// Called by `_EpisodeSquare` to open the player for a specific episode.
-  void _playEpisode(int episode) {
-    if (episode < 1 || _tvShow == null) return;
-
-    Navigator.of(context).pushNamed(
-      '/video-player',
-      arguments: {
-        'tmdbId': _tvShow!.id.toString(),
-        'title': _tvShow!.name,
-        'isTv': true,
-        'seasonNumber': _season,
-        'episodeNumber': episode,
-        'type': 'tv',
-      },
-    );
+    // Listen to the TVDetailBloc to update the TVShow when loaded
+    _tvDetailSubscription =
+        context.read<TVDetailBloc>().stream.listen((state) {
+      if (state is TVDetailLoaded) {
+        setState(() {
+          _currentTvShow = state.tvShow;
+          // Reset season and episode selection when new TVShow loads
+          if (_currentTvShow!.seasons.isNotEmpty) {
+            _selectedSeason = _currentTvShow!.seasons.first.seasonNumber;
+            _selectedEpisode = 1;
+          } else {
+            _selectedSeason = null;
+            _selectedEpisode = null;
+          }
+        });
+      }
+    });
+    // Trigger the load of TV detail
+    context.read<TVDetailBloc>().add(LoadTVDetail(tvShow: widget.tvShow));
   }
 
   @override
-  Widget build(BuildContext context) {
-    final TVShow tvShow =
-        _tvShow ?? (ModalRoute.of(context)!.settings.arguments as TVShow);
-
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      resizeToAvoidBottomInset: false,
-      body: BlocProvider(
-        create: (_) => TVDetailBloc(
-          tvDetailRepository: context.read<TVDetailRepository>(),
-        )..add(LoadTVDetail(tvShow: tvShow)),
-        child: CustomScrollView(
-          scrollCacheExtent: ScrollCacheExtent.pixels(2000), slivers: [
-            SliverAppBar(
-              expandedHeight: 300,
-              pinned: true,
-              backgroundColor: Colors.black,
-              leading: const BackButton(color: Colors.white),
-              flexibleSpace: FlexibleSpaceBar(
-                background: NetworkImageWidget(
-                  imageUrl: tvShow.backdropUrl,
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 16),
-                  // ── Play + action buttons ───────────────────────────────────
-                  if (_playerUrl.isNotEmpty ||
-                      (_videoUrl != null && _videoUrl!.isNotEmpty))
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () => _playEpisode(_episode),
-                              icon: const Icon(Icons.play_arrow, color: Colors.white),
-                              label: const Text('Play', style: TextStyle(color: Colors.white)),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Theme.of(context).primaryColor,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          IconButton(
-                            onPressed: () async {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Extracting link...')),
-                              );
-                              final embedUrl = 'https://play.xpass.top/e/tv/${tvShow.id}/$_season/$_episode';
-                              final downloadUrl = await LinkExtractor.extract(embedUrl);
-                              if (downloadUrl != null) {
-                                if (context.mounted) {
-                                  context.read<DownloadBloc>().add(
-                                    StartDownload(
-                                      tvShow: tvShow,
-                                      season: _season,
-                                      episode: _episode,
-                                      url: downloadUrl,
-                                    ),
-                                  );
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Download started')),
-                                  );
-                                }
-                              } else {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Failed to extract download link')),
-                                  );
-                                }
-                              }
-                            },
-                            icon: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.white38),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: const Icon(Icons.download, color: Colors.white70),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            onPressed: () {},
-                            icon: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.white38),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: const Icon(Icons.thumb_up_off_alt, color: Colors.white70),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  const SizedBox(height: 16),
-                  // ── Season strip + episode cards ─────────────────────────────
-                  if (_tvParseOk)
-                    Container(
-                        decoration: BoxDecoration(
-                          border: Border(
-                            top:
-                                BorderSide(color: Colors.white.withValues(alpha: 0.06)),
-                            bottom:
-                                BorderSide(color: Colors.white.withValues(alpha: 0.06)),
-                          ),
-                        ),
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Episodes',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            // ── Season strip ─────────────────────────────────────
-                            _buildSeasonStrip(context),
-                            const SizedBox(height: 16),
-                            // ── Episode numbers in small squares ──────────────────
-                            _buildEpisodeGrid(),
-                          ],
-                        )),
-                  const SizedBox(height: 8),
-                  DetailInfoWidget(tvShow: tvShow),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  void dispose() {
+    _tvDetailSubscription.cancel();
+    super.dispose();
   }
 
-  // ── Episodes helpers ─────────────────────────────────────────────────────────
+  Future<List<VylaSource>> _loadSources(int tmdbId, String type,
+      {int? season, int? episode}) async {
+    final completer = Completer<List<VylaSource>>();
+    late final StreamSubscription<DownloadState> subscription;
+    subscription =
+        context.read<DownloadBloc>().stream.listen((state) {
+      if (state is StreamSourcesLoaded) {
+        if (!mounted) return;
+        completer.complete(state.sources);
+        subscription.cancel();
+      } else if (state is StreamSourcesError) {
+        if (!mounted) return;
+        completer.completeError(state.message);
+        subscription.cancel();
+      }
+    });
 
-  /// Builds a horizontally-scrolling strip of season chips for every season
-  /// returned by the TMDB scrape.  Arrow buttons are omitted so the list
-  /// scrolls naturally when there are more seasons than fit on screen.
-  Widget _buildSeasonStrip(BuildContext context) {
-    final seasons = _tvShow?.seasons;
-    if (seasons == null || seasons.isEmpty) return const SizedBox.shrink();
+    // Trigger the load
+    context.read<DownloadBloc>().add(
+      LoadStreamSources(
+        tmdbId: tmdbId,
+        type: type,
+        season: season,
+        episode: episode,
+      ),
+    );
 
-    return SizedBox(
-      height: 34,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: seasons.length,
-        itemBuilder: (context, index) {
-          final s = seasons[index];
-          final active = s.seasonNumber == _season;
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: ChoiceChip(
-              label: Text(s.name),
-              selected: active,
-              onSelected: (_) => _onSeasonSelected(s.seasonNumber),
-              labelStyle: TextStyle(
-                color: active ? Colors.black : Colors.white70,
-                fontWeight: FontWeight.w600,
-              ),
-              backgroundColor: Colors.white10,
-              selectedColor: Colors.white,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(
-                  color: active ? Colors.white : Colors.white10,
-                ),
-              ),
+    return completer.future;
+  }
+
+  void _startDownload() {
+    if (_selectedSeason == null ||
+        _selectedEpisode == null ||
+        _currentTvShow == null) return;
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => SourceSelectionDialog(
+        title:
+            '${_currentTvShow!.name} S${_selectedSeason!.toString().padLeft(2, '0')}E${_selectedEpisode!.toString().padLeft(2, '0')}',
+        onLoadSources: () => _loadSources(
+          _currentTvShow!.id,
+          'tv',
+          season: _selectedSeason,
+          episode: _selectedEpisode,
+        ),
+        onSourceSelected: (source) {
+          context.read<DownloadBloc>().add(
+            StartDownload(
+              tvShow: _currentTvShow!,
+              season: _selectedSeason,
+              episode: _selectedEpisode,
+              url: source.m3u8,
             ),
+          );
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Download started')),
           );
         },
       ),
     );
   }
 
-  /// Builds a wrapped grid of small episode-number squares, one per episode
-  /// in the currently selected season (as reported by the TMDB scrape API).
-  Widget _buildEpisodeGrid() {
-    if (_tvShow == null) return const SizedBox.shrink();
+  void _playEpisode(int episode) {
+    // TODO: Implement playback
+    setState(() {
+      _selectedEpisode = episode;
+    });
+  }
 
+  Widget _buildSeasonDropdown() {
+    if (_currentTvShow == null ||
+        _currentTvShow!.seasons.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: DropdownButton<int>(
+        isExpanded: true,
+        hint: const Text(
+          'Select Season',
+          style: TextStyle(color: Colors.white60),
+        ),
+        value: _selectedSeason,
+        items: _currentTvShow!.seasons
+            .map((season) => DropdownMenuItem<int>(
+                  value: season.seasonNumber,
+                  child: Text(
+                    'Season ${season.seasonNumber}',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ))
+            .toList(),
+        onChanged: (value) {
+          setState(() {
+            _selectedSeason = value;
+            _selectedEpisode = 1; // Reset to first episode when season changes
+          });
+        },
+        dropdownColor: Colors.black87,
+      ),
+    );
+  }
+
+  Widget _buildEpisodeGrid() {
     final episodeCount = _episodeCountForCurrentSeason;
     if (episodeCount <= 0) return const SizedBox.shrink();
 
@@ -309,15 +182,157 @@ class _TVDetailPageState extends State<TVDetailPage> {
           padding: const EdgeInsets.all(3),
           child: _EpisodeSquare(
             episode: episode,
-            onTap: () => _playEpisode(episode),
-            isSelected: episode == _episode,
+            onTap: () {
+              setState(() {
+                _selectedEpisode = episode;
+              });
+              _playEpisode(episode);
+            },
+            isSelected: episode == _selectedEpisode,
           ),
         );
       },
     );
   }
+
+  int get _episodeCountForCurrentSeason {
+    if (_selectedSeason == null ||
+        _currentTvShow == null ||
+        _currentTvShow!.seasons.isEmpty) return 0;
+    final season = _currentTvShow!.seasons.firstWhere(
+      (s) => s.seasonNumber == _selectedSeason,
+      orElse: () => _currentTvShow!.seasons.first,
+    );
+    return season.episodeCount;
+  }
+
+  Widget _buildContent(TVShow tvShow) {
+    return CustomScrollView(
+      slivers: [
+        SliverAppBar(
+          expandedHeight: 300,
+          pinned: true,
+          backgroundColor: Colors.black,
+          leading: const BackButton(color: Colors.white),
+          flexibleSpace: FlexibleSpaceBar(
+            background: NetworkImageWidget(
+              imageUrl: tvShow.backdropUrl,
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 16),
+              // Action Buttons Row
+              if (tvShow.playerUrl.isNotEmpty ||
+                  (tvShow.videoUrl != null &&
+                      tvShow.videoUrl!.isNotEmpty))
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.of(context).pushNamed(
+                              '/video-player',
+                              arguments: {
+                                'tmdbId': tvShow.id.toString(),
+                                'title': tvShow.name,
+                                'type': 'tv',
+                                'isTv': true,
+                                'seasonNumber': _selectedSeason,
+                                'episodeNumber': _selectedEpisode,
+                              },
+                            );
+                          },
+                          icon: const Icon(Icons.play_arrow, color: Colors.white),
+                          label: const Text('Play', style: TextStyle(color: Colors.white)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(context).primaryColor,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      IconButton(
+                        onPressed: _startDownload,
+                        icon: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.white38),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Icon(Icons.download, color: Colors.white70),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: () {},
+                        icon: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.white38),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Icon(Icons.thumb_up_off_alt, color: Colors.white70),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 20),
+              DetailInfoWidget(tvShow: tvShow),
+              const SizedBox(height: 20),
+              // Season Selector
+              _buildSeasonDropdown(),
+              const SizedBox(height: 20),
+              // Episode Grid
+              const Text(
+                'Episodes',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              _buildEpisodeGrid(),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: BlocBuilder<TVDetailBloc, TVDetailState>(
+        builder: (context, state) {
+          if (state is TVDetailLoading) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (state is TVDetailLoaded) {
+            return _buildContent(state.tvShow);
+          } else if (state is TVDetailError) {
+            return Center(child: Text('Error: ${state.message}'));
+          } else {
+            return const SizedBox.shrink();
+          }
+        },
+      ),
+    );
+  }
 }
 
+// Helper widget for episode square
 class _EpisodeSquare extends StatelessWidget {
   final int episode;
   final VoidCallback onTap;
@@ -326,29 +341,26 @@ class _EpisodeSquare extends StatelessWidget {
   const _EpisodeSquare({
     required this.episode,
     required this.onTap,
-    this.isSelected = false,
+    required this.isSelected,
   });
 
   @override
   Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 1,
-      child: Material(
-        color: isSelected
-            ? Theme.of(context).primaryColor
-            : const Color(0xFF2A2A2A),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(6),
-          child: Center(
-            child: Text(
-              '$episode',
-              style: TextStyle(
-                color: isSelected ? Colors.white : Colors.white70,
-                fontSize: 14,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-              ),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Theme.of(context).primaryColor
+              : Colors.grey.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Center(
+          child: Text(
+            episode.toString(),
+            style: TextStyle(
+              color: isSelected ? Colors.white : Colors.white70,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ),

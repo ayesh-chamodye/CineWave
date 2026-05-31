@@ -6,6 +6,7 @@ import 'package:cinewave/features/tv_detail/presentation/pages/tv_detail_page.da
 import 'package:cinewave/features/all_media/presentation/all_media_screen.dart';
 import 'package:cinewave/shared/widgets/landscape_video_player.dart';
 import 'package:cinewave/splash_page.dart';
+import 'package:cinewave/core/models/media_models.dart';
 
 class AppRoutes {
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
@@ -26,13 +27,15 @@ class AppRoutes {
           settings: settings,
         );
       case '/movie-detail':
+        final movie = settings.arguments as Movie;
         return MaterialPageRoute(
-          builder: (_) => const MovieDetailPage(),
+          builder: (_) => MovieDetailPage(movie: movie),
           settings: settings,
         );
       case '/tv-detail':
+        final tvShow = settings.arguments as TVShow;
         return MaterialPageRoute(
-          builder: (_) => const TVDetailPage(),
+          builder: (_) => TVDetailPage(tvShow: tvShow),
           settings: settings,
         );
       case '/all-media':

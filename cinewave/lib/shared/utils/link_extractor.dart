@@ -15,7 +15,10 @@ class LinkExtractor {
   static const String agentUrl = 'https://movie-scrape-silk.vercel.app/agent.js';
   static HeadlessInAppWebView? _headlessWebView;
   static String? _cachedAgentJs;
-  static final _dio = Dio();
+  static final _dio = Dio(BaseOptions(
+    connectTimeout: const Duration(minutes: 5),
+    receiveTimeout: const Duration(minutes: 5),
+  ));
 
   static Future<String?> extract(String embedUrl) async {
     final result = await extractWithHeaders(embedUrl);
@@ -110,7 +113,7 @@ class LinkExtractor {
                 'status': 500,
                 'ok': false,
                 'headers': {},
-                'body': e.toString(),
+                'body': json.encode({'error': e.toString()}),
                 'bodyBytes': 0,
               };
             }
@@ -158,7 +161,7 @@ class LinkExtractor {
                   body: result.body,
                   bodyBytes: result.bodyBytes || 0,
                   text: async () => result.body,
-                  json: async () => JSON.parse(result.body)
+                  json: async () => { try { return JSON.parse(result.body); } catch(e) { return { error: 'parse_failed', raw: result.body }; } }
                 };
               };
               
@@ -182,9 +185,9 @@ class LinkExtractor {
       await _headlessWebView!.run();
       
       final result = await completer.future.timeout(
-        const Duration(seconds: 60),
+        const Duration(minutes: 5),
         onTimeout: () {
-          debugPrint('⏰ LinkExtractor: Timed out after 60s');
+          debugPrint('⏰ LinkExtractor: Timed out after 5 minutes');
           return null;
         },
       );

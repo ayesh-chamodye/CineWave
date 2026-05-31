@@ -1,55 +1,323 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cinewave/features/downloads/presentation/bloc/download_bloc.dart';
 import 'package:cinewave/features/downloads/presentation/bloc/download_event.dart';
 import 'package:cinewave/features/downloads/presentation/bloc/download_state.dart';
+import 'package:cinewave/features/downloads/presentation/widgets/season_episode_picker_dialog.dart';
+import 'package:cinewave/shared/widgets/source_selection_dialog.dart';
+import 'package:cinewave/shared/widgets/media_result_tile.dart';
 import 'package:cinewave/shared/widgets/network_image.dart';
+import 'package:cinewave/features/search/presentation/search_bloc.dart';
 import 'package:cinewave/core/models/media_models.dart';
 
-class DownloadsPage extends StatelessWidget {
+class DownloadsPage extends StatefulWidget {
   const DownloadsPage({super.key});
+
+  @override
+  State<DownloadsPage> createState() => _DownloadsPageState();
+}
+
+class _DownloadsPageState extends State<DownloadsPage> {
+  final TextEditingController _searchController = TextEditingController();
+  bool _showSearch = false;
+
+  Future<List<VylaSource>> _loadMovieSources(int tmdbId) async {
+    final completer = Completer<List<VylaSource>>();
+    late final StreamSubscription<DownloadState> subscription;
+    subscription = context.read<DownloadBloc>().stream.listen((state) {
+      if (state is StreamSourcesLoaded) {
+        if (!mounted) return;
+        completer.complete(state.sources);
+        subscription.cancel();
+      } else if (state is StreamSourcesError) {
+        if (!mounted) return;
+        completer.completeError(state.message);
+        subscription.cancel();
+      }
+    });
+    context.read<DownloadBloc>().add(LoadStreamSources(tmdbId: tmdbId, type: 'movie'));
+    return completer.future;
+  }
+
+  Future<List<VylaSource>> _loadTvSources(int tmdbId, int season, int episode) async {
+    final completer = Completer<List<VylaSource>>();
+    late final StreamSubscription<DownloadState> subscription;
+    subscription = context.read<DownloadBloc>().stream.listen((state) {
+      if (state is StreamSourcesLoaded) {
+        if (!mounted) return;
+        completer.complete(state.sources);
+        subscription.cancel();
+      } else if (state is StreamSourcesError) {
+        if (!mounted) return;
+        completer.completeError(state.message);
+        subscription.cancel();
+      }
+    });
+    context.read<DownloadBloc>().add(
+          LoadStreamSources(tmdbId: tmdbId, type: 'tv', season: season, episode: episode),
+        );
+    return completer.future;
+  }
+
+  void _onMovieTap(Movie movie) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => SourceSelectionDialog(
+        title: movie.title,
+        onLoadSources: () => _loadMovieSources(movie.id),
+        onSourceSelected: (source) {
+          context.read<DownloadBloc>().add(StartDownload(movie: movie, url: source.m3u8));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Download started')),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _onTvTap(TVShow tvShow) async {
+    final result = await showDialog<Map<String, int>>(
+      context: context,
+      builder: (dialogContext) => SeasonEpisodePickerDialog(
+        tvShow: tvShow,
+        onSeasonChanged: (_) {},
+      ),
+    );
+    if (result == null) return;
+    if (!mounted) return;
+    final season = result['season']!;
+    final episode = result['episode']!;
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => SourceSelectionDialog(
+        title: '${tvShow.name} S${season.toString().padLeft(2, '0')}E${episode.toString().padLeft(2, '0')}',
+        onLoadSources: () => _loadTvSources(tvShow.id, season, episode),
+        onSourceSelected: (source) {
+          context.read<DownloadBloc>().add(
+                StartDownload(tvShow: tvShow, season: season, episode: episode, url: source.m3u8),
+              );
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Download started')),
+          );
+        },
+      ),
+    );
+  }
+
+  void _performSearch() {
+    final query = _searchController.text.trim();
+    if (query.isEmpty) return;
+    context.read<SearchBloc>().add(SearchMovies(query: query));
+    context.read<SearchBloc>().add(SearchTvShows(query: query));
+    setState(() => _showSearch = true);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-       appBar: AppBar(
-         automaticallyImplyLeading: false,
-         title: const Text('Downloads', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-         backgroundColor: Colors.black,
-         elevation: 0,
-       ),
-      body: BlocBuilder<DownloadBloc, DownloadState>(
-        builder: (context, state) {
-          if (state is DownloadsLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (state is DownloadsLoaded) {
-            if (state.items.isEmpty) {
-              return const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.download_for_offline_outlined, color: Colors.white24, size: 64),
-                    SizedBox(height: 16),
-                    Text('No downloads yet', style: TextStyle(color: Colors.white54, fontSize: 16)),
-                  ],
-                ),
-              );
-            }
-            return ListView.builder(
-              itemCount: state.items.length,
-              itemBuilder: (context, index) {
-                final item = state.items[index];
-                return _DownloadTile(item: item);
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        title: const Text('Downloads', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.black,
+        elevation: 0,
+      ),
+      body: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: const Color(0xFF2A2A2A),
+                        hintText: 'Search for movies or TV shows...',
+                        hintStyle: const TextStyle(color: Colors.white54),
+                        prefixIcon: const Icon(Icons.search, color: Colors.white54),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      ),
+                      onSubmitted: (_) => _performSearch(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: Icon(_showSearch ? Icons.close : Icons.search, color: Colors.white),
+                    onPressed: () {
+                      setState(() => _showSearch = !_showSearch);
+                      if (_showSearch) {
+                        _performSearch();
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: BlocBuilder<SearchBloc, SearchState>(
+              bloc: _showSearch ? context.read<SearchBloc>() : null,
+              builder: (context, searchState) {
+                if (!_showSearch) return const SizedBox.shrink();
+                if (searchState is SearchLoading) {
+                  return const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+                if (searchState is SearchResultsLoaded) {
+                  final movies = searchState.movies;
+                  final tvShows = searchState.tvShows;
+                  if (movies.isEmpty && tvShows.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Center(
+                        child: Text(
+                          'No results found',
+                          style: TextStyle(color: Colors.white54, fontSize: 16),
+                        ),
+                      ),
+                    );
+                  }
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (movies.isNotEmpty) ...[
+                        const Padding(
+                          padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                          child: Text(
+                            'Movies',
+                            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        SizedBox(
+                          height: 200,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: movies.length,
+                            itemBuilder: (context, index) {
+                              final movie = movies[index];
+                              return MediaResultTile.movie(
+                                movie: movie,
+                                onTap: () => _onMovieTap(movie),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                      if (tvShows.isNotEmpty) ...[
+                        const Padding(
+                          padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                          child: Text(
+                            'TV Shows',
+                            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        SizedBox(
+                          height: 200,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: tvShows.length,
+                            itemBuilder: (context, index) {
+                              final tvShow = tvShows[index];
+                              return MediaResultTile.tv(
+                                tvShow: tvShow,
+                                onTap: () => _onTvTap(tvShow),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ],
+                  );
+                }
+                if (searchState is SearchError) {
+                  return Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Center(
+                      child: Text(
+                        searchState.message,
+                        style: const TextStyle(color: Colors.redAccent),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
               },
-            );
-          }
-          if (state is DownloadError) {
-            return Center(child: Text(state.message, style: const TextStyle(color: Colors.red)));
-          }
-          return const SizedBox.shrink();
-        },
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: BlocBuilder<DownloadBloc, DownloadState>(
+              builder: (context, state) {
+                if (state is DownloadsLoading) {
+                  return const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+                if (state is DownloadsLoaded) {
+                  if (state.items.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              _showSearch ? Icons.search_off_rounded : Icons.download_for_offline_outlined,
+                              color: Colors.white24,
+                              size: 64,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              _showSearch ? 'No downloads yet. Search above to start.' : 'No downloads yet',
+                              style: const TextStyle(color: Colors.white54, fontSize: 16),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                        child: Text(
+                          'Your Downloads',
+                          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      ...state.items.map((item) => _DownloadTile(item: item)),
+                    ],
+                  );
+                }
+                if (state is DownloadError) {
+                  return Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Center(
+                      child: Text(state.message, style: const TextStyle(color: Colors.red)),
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+        ],
       ),
     );
   }
@@ -66,7 +334,7 @@ class _DownloadTile extends StatelessWidget {
       builder: (context, state) {
         double currentProgress = 0;
         if (item.status == DownloadStatus.downloading) {
-           currentProgress = context.read<DownloadBloc>().getProgress(item.id);
+          currentProgress = context.read<DownloadBloc>().getProgress(item.id);
         }
 
         return Container(

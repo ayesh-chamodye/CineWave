@@ -1,23 +1,62 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cinewave/features/movie_detail/presentation/movie_detail_bloc.dart';
 import 'package:cinewave/features/movie_detail/data/repositories/movie_detail_repository.dart';
 import 'package:cinewave/features/movie_detail/presentation/widgets/detail_info.dart';
 import 'package:cinewave/shared/widgets/network_image.dart';
-import 'package:cinewave/core/models/media_models.dart';
-import 'package:cinewave/shared/utils/link_extractor.dart';
 import 'package:cinewave/features/downloads/presentation/bloc/download_bloc.dart';
 import 'package:cinewave/features/downloads/presentation/bloc/download_event.dart';
+import 'package:cinewave/features/downloads/presentation/bloc/download_state.dart';
+import 'package:cinewave/shared/widgets/source_selection_dialog.dart';
+import 'package:cinewave/core/models/media_models.dart';
 
-class MovieDetailPage extends StatelessWidget {
+class MovieDetailPage extends StatefulWidget {
   static const String routeName = '/movie-detail';
 
-  const MovieDetailPage({super.key});
+  final Movie movie;
+
+  const MovieDetailPage({super.key, required this.movie});
+
+  @override
+  State<MovieDetailPage> createState() => _MovieDetailPageState();
+}
+
+class _MovieDetailPageState extends State<MovieDetailPage> {
+  late final Movie _movie;
+
+  @override
+  void initState() {
+    super.initState();
+    _movie = widget.movie;
+  }
+
+  Future<List<VylaSource>> _loadSources(int tmdbId) async {
+    final completer = Completer<List<VylaSource>>();
+    late final StreamSubscription<DownloadState> subscription;
+    subscription = context.read<DownloadBloc>().stream.listen((state) {
+      if (state is StreamSourcesLoaded) {
+        if (!mounted) return;
+        completer.complete(state.sources);
+        subscription.cancel();
+      } else if (state is StreamSourcesError) {
+        if (!mounted) return;
+        completer.completeError(state.message);
+        subscription.cancel();
+      }
+    });
+    
+    // Trigger the load
+    context.read<DownloadBloc>().add(
+      LoadStreamSources(tmdbId: tmdbId, type: 'movie'),
+    );
+    
+    return completer.future;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final Movie movie = ModalRoute.of(context)!.settings.arguments as Movie;
+    final Movie movie = _movie;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -27,7 +66,7 @@ class MovieDetailPage extends StatelessWidget {
           movieDetailRepository: context.read<MovieDetailRepository>(),
         )..add(LoadMovieDetail(movie: movie)),
         child: CustomScrollView(
-          scrollCacheExtent: ScrollCacheExtent.pixels(2000), slivers: [
+          slivers: [
             SliverAppBar(
               expandedHeight: 300,
               pinned: true,
@@ -52,7 +91,6 @@ class MovieDetailPage extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Row(
                         children: [
-                          // Play button → landscape player
                           Expanded(
                             child: ElevatedButton.icon(
                               onPressed: () {
@@ -77,30 +115,23 @@ class MovieDetailPage extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 12),
-                          // Download button
                           IconButton(
-                            onPressed: () async {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Extracting link...')),
+                            onPressed: () {
+                              showDialog<void>(
+                                context: context,
+                                builder: (dialogContext) => SourceSelectionDialog(
+                                  title: movie.title,
+                                  onLoadSources: () => _loadSources(movie.id),
+                                  onSourceSelected: (source) {
+                                    context.read<DownloadBloc>().add(
+                                      StartDownload(movie: movie, url: source.m3u8),
+                                    );
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Download started')),
+                                    );
+                                  },
+                                ),
                               );
-                              final embedUrl = 'https://play.xpass.top/e/movie/${movie.id}';
-                              final downloadUrl = await LinkExtractor.extract(embedUrl);
-                              if (downloadUrl != null) {
-                                if (context.mounted) {
-                                  context.read<DownloadBloc>().add(
-                                    StartDownload(movie: movie, url: downloadUrl),
-                                  );
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Download started')),
-                                  );
-                                }
-                              } else {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Failed to extract download link')),
-                                  );
-                                }
-                              }
                             },
                             icon: Container(
                               padding: const EdgeInsets.all(8),
@@ -112,7 +143,6 @@ class MovieDetailPage extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          // Like button
                           IconButton(
                             onPressed: () {},
                             icon: Container(

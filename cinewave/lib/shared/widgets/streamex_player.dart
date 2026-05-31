@@ -66,7 +66,7 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
   Future<void> _startExtraction() async {
     try {
       final result = await LinkExtractor.extractWithHeaders(_embedUrl).timeout(
-        const Duration(seconds: 45),
+        const Duration(minutes: 5),
         onTimeout: () => null,
       );
 
