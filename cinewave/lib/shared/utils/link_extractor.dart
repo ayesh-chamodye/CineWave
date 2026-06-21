@@ -7,8 +7,17 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 class ExtractionResult {
   final String url;
   final Map<String, String> headers;
+  final List<MediaSubtitle>? subtitles;
 
-  ExtractionResult({required this.url, required this.headers});
+  ExtractionResult({required this.url, required this.headers, this.subtitles});
+}
+
+class MediaSubtitle {
+  final String url;
+  final String label;
+  final String language;
+
+  MediaSubtitle({required this.url, required this.label, required this.language});
 }
 
 class LinkExtractor {
@@ -134,8 +143,25 @@ class LinkExtractor {
                   final Map<String, dynamic> rawHeaders = data['headers'] ?? {};
                   final Map<String, String> headers = rawHeaders.map((k, v) => MapEntry(k, v.toString()));
                   
-                  debugPrint('🎯 LinkExtractor: Success! URL: $streamUrl');
-                  completer.complete(ExtractionResult(url: streamUrl, headers: headers));
+                  final List<MediaSubtitle> subtitles = [];
+                  if (data['subtitles'] != null && data['subtitles'] is List) {
+                    for (var sub in data['subtitles']) {
+                      if (sub['url'] != null) {
+                        subtitles.add(MediaSubtitle(
+                          url: sub['url'].toString(),
+                          label: sub['lang']?.toString() ?? 'English',
+                          language: sub['lang']?.toString().toLowerCase() ?? 'en',
+                        ));
+                      }
+                    }
+                  }
+
+                  debugPrint('🎯 LinkExtractor: Success! URL: $streamUrl, Subtitles: ${subtitles.length}');
+                  completer.complete(ExtractionResult(
+                    url: streamUrl,
+                    headers: headers,
+                    subtitles: subtitles.isNotEmpty ? subtitles : null,
+                  ));
                 } else if (data['error'] != null) {
                   debugPrint("❌ LinkExtractor: Agent error: ${data['error']}");
                   completer.complete(null);

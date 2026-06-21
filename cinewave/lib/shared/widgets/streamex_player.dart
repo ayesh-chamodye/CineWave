@@ -9,6 +9,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cinewave/features/library/presentation/bloc/library_bloc.dart';
 import 'package:cinewave/features/library/presentation/bloc/library_event.dart';
 import 'package:cinewave/core/models/library_models.dart';
+import 'package:http/http.dart' as http;
 
 class StreamexPlayer extends StatefulWidget {
   final String tmdbId;
@@ -95,6 +96,118 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
     context.read<LibraryBloc>().add(AddToHistory(historyItem));
   }
 
+  void _showSubtitleMenu(List<MediaSubtitle> subs) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.black87,
+      builder: (context) {
+        return ListView.builder(
+          itemCount: subs.length + 1,
+          itemBuilder: (context, index) {
+            if (index == 0) {
+              return ListTile(
+                title: const Text('None', style: TextStyle(color: Colors.white)),
+                onTap: () {
+                  _chewieController?.setSubtitle([]);
+                  Navigator.pop(context);
+                },
+              );
+            }
+            final sub = subs[index - 1];
+            return ListTile(
+              title: Text(sub.label, style: const TextStyle(color: Colors.white)),
+              onTap: () {
+                _loadSubtitle(sub);
+                Navigator.pop(context);
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _loadSubtitle(MediaSubtitle sub) async {
+    try {
+      final response = await http.get(Uri.parse(sub.url));
+      if (response.statusCode == 200) {
+        final List<Subtitle> parsedSubs = _parseVtt(response.body);
+        if (parsedSubs.isNotEmpty && _chewieController != null) {
+          _chewieController!.setSubtitle(parsedSubs);
+          debugPrint('✅ Subtitles loaded and set: ${sub.label}');
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error loading subtitle: $e');
+    }
+  }
+
+  List<Subtitle> _parseVtt(String vttContent) {
+    final List<Subtitle> subtitles = [];
+    try {
+      final lines = vttContent.split('\n');
+      Duration? start;
+      Duration? end;
+      String text = '';
+
+      final timeRegex = RegExp(r'(\d{2}:)?\d{2}:\d{2}\.\d{3}');
+
+      for (var line in lines) {
+        if (line.contains('-->')) {
+          final parts = line.split('-->');
+          if (parts.length == 2) {
+            start = _parseVttTime(parts[0].trim());
+            end = _parseVttTime(parts[1].trim());
+          }
+        } else if (line.trim().isEmpty) {
+          if (start != null && end != null && text.isNotEmpty) {
+            subtitles.add(Subtitle(
+              index: subtitles.length,
+              start: start,
+              end: end,
+              text: text.trim(),
+            ));
+            start = null;
+            end = null;
+            text = '';
+          }
+        } else if (!line.startsWith('WEBVTT') && !line.startsWith('NOTE')) {
+          text += '$line\n';
+        }
+      }
+      // Final one
+      if (start != null && end != null && text.isNotEmpty) {
+        subtitles.add(Subtitle(
+          index: subtitles.length,
+          start: start,
+          end: end,
+          text: text.trim(),
+        ));
+      }
+    } catch (e) {
+      debugPrint('❌ VTT Parse Error: $e');
+    }
+    return subtitles;
+  }
+
+  Duration _parseVttTime(String timeStr) {
+    final parts = timeStr.split(':');
+    if (parts.length == 3) {
+      final hours = int.parse(parts[0]);
+      final minutes = int.parse(parts[1]);
+      final secondsParts = parts[2].split('.');
+      final seconds = int.parse(secondsParts[0]);
+      final milliseconds = int.parse(secondsParts[1]);
+      return Duration(hours: hours, minutes: minutes, seconds: seconds, milliseconds: milliseconds);
+    } else {
+      final minutes = int.parse(parts[0]);
+      final secondsParts = parts[1].split('.');
+      final seconds = int.parse(secondsParts[0]);
+      final milliseconds = int.parse(secondsParts[1]);
+      return Duration(minutes: minutes, seconds: seconds, milliseconds: milliseconds);
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Extraction
   // ---------------------------------------------------------------------------
@@ -116,7 +229,7 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
         return;
       }
 
-      await _initializeNativePlayer(result.url, result.headers);
+      await _initializeNativePlayer(result.url, result.headers, result.subtitles);
     } catch (e) {
       debugPrint('❌ Extraction error: $e');
       if (mounted) {
@@ -132,7 +245,8 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
   // Player init
   // ---------------------------------------------------------------------------
 
-  Future<void> _initializeNativePlayer(String url, Map<String, String> headers) async {
+  Future<void> _initializeNativePlayer(
+      String url, Map<String, String> headers, List<MediaSubtitle>? subtitles) async {
     debugPrint('▶️ Initializing player: $url');
 
     // Check if this is an HLS manifest and try to use cached version
@@ -155,6 +269,30 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
       }
 
       await _videoPlayerController!.initialize();
+
+      // Convert subtitles for Chewie
+      final List<OptionItem> subtitleOptions = [];
+      Subtitles? chewieSubtitles;
+
+      if (subtitles != null && subtitles.isNotEmpty) {
+        // Try to find English or just take the first one for auto-display
+        final autoSub = subtitles.firstWhere(
+          (s) => s.language.startsWith('en'),
+          orElse: () => subtitles.first,
+        );
+
+        chewieSubtitles = Subtitles([
+          // Note: Chewie's Subtitle class expects start/end/text, 
+          // but we usually have a URL for VTT/SRT.
+          // Chewie actually doesn't directly support VTT URLs in its 'subtitle' parameter.
+          // It expects pre-parsed subtitles.
+          // To support remote VTT, we might need 'chewie_vtt' or similar, 
+          // or just provide them in 'additionalOptions'.
+        ]);
+        
+        // Actually, many users use 'additionalOptions' to switch subtitle tracks by changing the 'subtitle' parameter dynamically.
+        // For now, let's just add them to additional options so user can pick.
+      }
 
       _videoPlayerController!.addListener(() {
         if (widget.isTv && _videoPlayerController!.value.isInitialized) {
@@ -188,7 +326,7 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
           bufferedColor: Colors.white54,
         ),
         additionalOptions: (context) {
-          return [
+          final List<OptionItem> options = [
             OptionItem(
               onTap: (ctx) {
                 _videoPlayerController!.setPlaybackSpeed(1.0);
@@ -214,6 +352,19 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
               title: '2.0x Speed',
             ),
           ];
+
+          if (subtitles != null && subtitles.isNotEmpty) {
+            options.add(OptionItem(
+              onTap: (ctx) {
+                Navigator.pop(ctx);
+                _showSubtitleMenu(subtitles);
+              },
+              iconData: Icons.subtitles,
+              title: 'Subtitles (${subtitles.length})',
+            ));
+          }
+
+          return options;
         },
       );
 
@@ -221,6 +372,16 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
         setState(() {
           _isExtracting = false;
         });
+
+        // Auto-display subtitles if available
+        if (subtitles != null && subtitles.isNotEmpty) {
+          final autoSub = subtitles.firstWhere(
+            (s) => s.language.startsWith('en'),
+            orElse: () => subtitles.first,
+          );
+          _loadSubtitle(autoSub);
+        }
+
         _historyTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
           _saveProgress();
         });
