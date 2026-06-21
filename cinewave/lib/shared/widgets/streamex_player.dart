@@ -421,7 +421,9 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
   Future<void> _initializeNativePlayer(
       String url, Map<String, String> headers, List<MediaSubtitle>? subtitles) async {
     debugPrint('▶️ Initializing player: $url');
-    _availableSubtitles = subtitles;
+    setState(() {
+      _availableSubtitles = subtitles;
+    });
 
     // Check if this is an HLS manifest and try to use cached version
     final String manifestSource = await _getPotentiallyCachedManifest(url, headers);
@@ -489,10 +491,10 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
         autoPlay: true,
         looping: false,
         aspectRatio: _videoPlayerController!.value.aspectRatio,
-        allowFullScreen: true,
-        fullScreenByDefault: true,
+        allowFullScreen: false, // Disable Chewie's own full-screen route
+        fullScreenByDefault: false,
         showControls: true,
-        showOptions: false, // Hide the three dots gear menu
+        showOptions: false,
         placeholder: Container(color: Colors.black),
         materialProgressColors: ChewieProgressColors(
           playedColor: Colors.blueAccent,
@@ -607,7 +609,11 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
             _buildErrorOverlay(),
 
           // 🔙 Top Control Bar
-          if (!_isExtracting) _buildTopControlBar(),
+          if (!_isExtracting) 
+            IgnorePointer(
+              ignoring: false, // Ensure we can click buttons
+              child: _buildTopControlBar(),
+            ),
 
           // ⏭️ Next Episode Button
           if (_showNextEpisodeButton) _buildNextEpisodeButton(),
@@ -849,6 +855,36 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
         child: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: _handleBack,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNextEpisodeButton() {
+    return Positioned(
+      bottom: 100,
+      right: 32,
+      child: ElevatedButton.icon(
+        onPressed: () {
+          final nextEpisode = (widget.episode ?? 1) + 1;
+          Navigator.of(context).pushReplacementNamed(
+            '/video-player',
+            arguments: {
+              'tmdbId': widget.tmdbId,
+              'title': widget.title,
+              'type': 'tv',
+              'isTv': true,
+              'seasonNumber': widget.season,
+              'episodeNumber': nextEpisode,
+              'posterUrl': widget.posterUrl,
+            },
+          );
+        },
+        icon: const Icon(Icons.skip_next, color: Colors.white),
+        label: const Text('Next Episode', style: TextStyle(color: Colors.white)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blueAccent.withValues(alpha: 0.8),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         ),
       ),
     );
