@@ -638,7 +638,7 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
       right: 0,
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           child: Row(
             children: [
               // Back Button
@@ -646,33 +646,31 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
                 color: Colors.black45,
                 shape: const CircleBorder(),
                 child: IconButton(
+                  iconSize: 28,
                   icon: const Icon(Icons.arrow_back, color: Colors.white),
                   onPressed: _handleBack,
                 ),
               ),
               const Spacer(),
-              // Speed Button
+              // Control Buttons
               _buildControlButton(
                 icon: Icons.speed,
                 label: '${_videoPlayerController?.value.playbackSpeed}x',
                 onTap: _showSpeedMenu,
               ),
-              const SizedBox(width: 6),
-              // Quality Button
+              const SizedBox(width: 8),
               _buildControlButton(
                 icon: Icons.high_quality,
                 label: 'Auto',
                 onTap: _showQualityMenu,
               ),
-              const SizedBox(width: 6),
-              // Aspect Ratio Button
+              const SizedBox(width: 8),
               _buildControlButton(
                 icon: Icons.aspect_ratio,
                 label: _getFitLabel(),
                 onTap: _toggleVideoFit,
               ),
-              const SizedBox(width: 6),
-              // Subtitle Button
+              const SizedBox(width: 8),
               _buildControlButton(
                 icon: _selectedSubtitle != null ? Icons.subtitles : Icons.subtitles_off,
                 label: 'CC',
@@ -716,19 +714,19 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: Colors.black54,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(24),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: color, size: 16),
-            const SizedBox(width: 4),
+            Icon(icon, color: color, size: 22),
+            const SizedBox(width: 6),
             Text(
               label,
-              style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
+              style: TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.bold),
             ),
           ],
         ),
