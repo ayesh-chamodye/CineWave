@@ -44,6 +44,7 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
   bool _showNextEpisodeButton = false;
   MediaSubtitle? _selectedSubtitle;
   List<MediaSubtitle>? _availableSubtitles;
+  BoxFit _videoFit = BoxFit.contain;
 
   bool _isExtracting = true;
   String _errorMessage = '';
@@ -596,8 +597,24 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
                 }
               },
               child: Container(
+                width: double.infinity,
+                height: double.infinity,
                 color: Colors.black,
-                child: Chewie(controller: _chewieController!),
+                child: Center(
+                  child: FittedBox(
+                    fit: _videoFit,
+                    clipBehavior: Clip.hardEdge,
+                    child: SizedBox(
+                      width: (_videoPlayerController!.value.size.width > 0) 
+                          ? _videoPlayerController!.value.size.width 
+                          : 1280,
+                      height: (_videoPlayerController!.value.size.height > 0) 
+                          ? _videoPlayerController!.value.size.height 
+                          : 720,
+                      child: Chewie(controller: _chewieController!),
+                    ),
+                  ),
+                ),
               ),
             ),
 
@@ -655,18 +672,45 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
               onTap: _showQualityMenu,
             ),
             const SizedBox(width: 8),
+            // Aspect Ratio Button
+            _buildControlButton(
+              icon: Icons.aspect_ratio,
+              label: _getFitLabel(),
+              onTap: _toggleVideoFit,
+            ),
+            const SizedBox(width: 8),
             // Subtitle Button
-            if (_availableSubtitles != null && _availableSubtitles!.isNotEmpty)
-              _buildControlButton(
-                icon: _selectedSubtitle != null ? Icons.subtitles : Icons.subtitles_off,
-                label: 'CC',
-                color: _selectedSubtitle != null ? Colors.blueAccent : Colors.white,
-                onTap: () => _showSubtitleMenu(_availableSubtitles!),
-              ),
+            _buildControlButton(
+              icon: _selectedSubtitle != null ? Icons.subtitles : Icons.subtitles_off,
+              label: 'CC',
+              color: _selectedSubtitle != null ? Colors.blueAccent : Colors.white,
+              onTap: () => _showSubtitleMenu(_availableSubtitles ?? []),
+            ),
           ],
         ),
       ),
     );
+  }
+
+  String _getFitLabel() {
+    switch (_videoFit) {
+      case BoxFit.contain: return 'Fit';
+      case BoxFit.cover: return 'Zoom';
+      case BoxFit.fill: return 'Stretch';
+      default: return 'Fit';
+    }
+  }
+
+  void _toggleVideoFit() {
+    setState(() {
+      if (_videoFit == BoxFit.contain) {
+        _videoFit = BoxFit.cover;
+      } else if (_videoFit == BoxFit.cover) {
+        _videoFit = BoxFit.fill;
+      } else {
+        _videoFit = BoxFit.contain;
+      }
+    });
   }
 
   Widget _buildControlButton({
