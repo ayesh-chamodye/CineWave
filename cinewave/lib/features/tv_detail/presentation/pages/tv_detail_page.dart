@@ -34,21 +34,39 @@ class _TVDetailPageState extends State<TVDetailPage> {
   void initState() {
     super.initState();
     _currentTvShow = widget.tvShow;
-    if (_currentTvShow != null && _currentTvShow!.seasons.isNotEmpty) {
+    
+    // Check history for last watched episode
+    final libraryState = context.read<LibraryBloc>().state;
+    if (libraryState is LibraryLoaded) {
+      final history = libraryState.history
+          .where((h) => h.mediaId == widget.tvShow.id.toString())
+          .toList();
+      if (history.isNotEmpty) {
+        history.sort((a, b) => b.lastWatched.compareTo(a.lastWatched));
+        _selectedSeason = history.first.season;
+        _selectedEpisode = history.first.episode;
+      }
+    }
+
+    if (_selectedSeason == null && _currentTvShow != null && _currentTvShow!.seasons.isNotEmpty) {
       _selectedSeason = _currentTvShow!.seasons.first.seasonNumber;
       _selectedEpisode = 1;
     }
+
     _tvDetailSubscription =
         context.read<TVDetailBloc>().stream.listen((state) {
       if (state is TVDetailLoaded) {
         setState(() {
           _currentTvShow = state.tvShow;
-          if (_currentTvShow!.seasons.isNotEmpty) {
-            _selectedSeason = _currentTvShow!.seasons.first.seasonNumber;
-            _selectedEpisode = 1;
-          } else {
-            _selectedSeason = null;
-            _selectedEpisode = null;
+          // Only override if not already set from history
+          if (_selectedSeason == null) {
+            if (_currentTvShow!.seasons.isNotEmpty) {
+              _selectedSeason = _currentTvShow!.seasons.first.seasonNumber;
+              _selectedEpisode = 1;
+            } else {
+              _selectedSeason = null;
+              _selectedEpisode = null;
+            }
           }
         });
       }
@@ -99,25 +117,52 @@ class _TVDetailPageState extends State<TVDetailPage> {
     final episodeCount = _episodeCountForCurrentSeason;
     if (episodeCount <= 0) return const SizedBox.shrink();
 
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: episodeCount,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 5),
-      itemBuilder: (context, index) {
-        final episode = index + 1;
-        return Padding(
-          padding: const EdgeInsets.all(3),
-          child: _EpisodeSquare(
-            episode: episode,
-            onTap: () {
-              setState(() {
-                _selectedEpisode = episode;
-              });
-              _playEpisode(episode);
-            },
-            isSelected: episode == _selectedEpisode,
-          ),
+    return BlocBuilder<LibraryBloc, LibraryState>(
+      builder: (context, libraryState) {
+        List<WatchHistoryItem> history = [];
+        if (libraryState is LibraryLoaded) {
+          history = libraryState.history
+              .where((h) => h.mediaId == _currentTvShow?.id.toString() && h.season == _selectedSeason)
+              .toList();
+        }
+
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: episodeCount,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 5),
+          itemBuilder: (context, index) {
+            final episode = index + 1;
+            final isWatched = history.any((h) => h.episode == episode && h.isCompleted);
+            
+            return Padding(
+              padding: const EdgeInsets.all(3),
+              child: _EpisodeSquare(
+                episode: episode,
+                onTap: () {
+                  setState(() {
+                    _selectedEpisode = episode;
+                  });
+                  AdService().showRewardedInterstitialAd(() {
+                    Navigator.of(context).pushNamed(
+                      '/video-player',
+                      arguments: {
+                        'tmdbId': _currentTvShow!.id.toString(),
+                        'title': _currentTvShow!.name,
+                        'type': 'tv',
+                        'isTv': true,
+                        'seasonNumber': _selectedSeason,
+                        'episodeNumber': episode,
+                        'posterUrl': _currentTvShow!.posterUrl,
+                      },
+                    );
+                  });
+                },
+                isSelected: episode == _selectedEpisode,
+                isWatched: isWatched,
+              ),
+            );
+          },
         );
       },
     );
@@ -293,8 +338,14 @@ class _EpisodeSquare extends StatelessWidget {
   final int episode;
   final VoidCallback onTap;
   final bool isSelected;
+  final bool isWatched;
 
-  const _EpisodeSquare({required this.episode, required this.onTap, required this.isSelected});
+  const _EpisodeSquare({
+    required this.episode,
+    required this.onTap,
+    required this.isSelected,
+    this.isWatched = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -305,11 +356,21 @@ class _EpisodeSquare extends StatelessWidget {
           color: isSelected ? Theme.of(context).primaryColor : Colors.grey.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(4),
         ),
-        child: Center(
-          child: Text(episode.toString(),
-              style: TextStyle(
-                  color: isSelected ? Colors.white : Colors.white70,
-                  fontWeight: FontWeight.bold)),
+        child: Stack(
+          children: [
+            Center(
+              child: Text(episode.toString(),
+                  style: TextStyle(
+                      color: isSelected ? Colors.white : Colors.white70,
+                      fontWeight: FontWeight.bold)),
+            ),
+            if (isWatched)
+              Positioned(
+                bottom: 2,
+                right: 2,
+                child: Icon(Icons.check_circle, size: 12, color: Colors.greenAccent.withValues(alpha: 0.8)),
+              ),
+          ],
         ),
       ),
     );
