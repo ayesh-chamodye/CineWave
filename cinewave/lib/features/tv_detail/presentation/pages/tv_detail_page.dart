@@ -275,11 +275,13 @@ class _TVDetailPageState extends State<TVDetailPage> {
                               if (inHistory)
                                 IconButton(
                                   onPressed: () {
-                                    // Note: History ID might be complex for TV shows, but usually it starts with tv_ID
-                                    // For simplicity, let's find the first one or clear all for this TV show
-                                    final historyItems = state.history.where((h) => h.mediaId == tvShow.id.toString());
-                                    for (var item in historyItems) {
-                                      context.read<LibraryBloc>().add(DeleteHistoryItem(item.id));
+                                    final currentState = context.read<LibraryBloc>().state;
+                                    if (currentState is LibraryLoaded) {
+                                      final historyItems = currentState.history
+                                          .where((h) => h.mediaId == tvShow.id.toString());
+                                      for (var item in historyItems) {
+                                        context.read<LibraryBloc>().add(DeleteHistoryItem(item.id));
+                                      }
                                     }
                                   },
                                   icon: Container(

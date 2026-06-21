@@ -173,25 +173,25 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
         additionalOptions: (context) {
           return [
             OptionItem(
-              onTap: () {
+              onTap: (ctx) {
                 _videoPlayerController!.setPlaybackSpeed(1.0);
-                Navigator.pop(context);
+                Navigator.pop(ctx);
               },
               iconData: Icons.speed,
               title: 'Normal Speed',
             ),
             OptionItem(
-              onTap: () {
+              onTap: (ctx) {
                 _videoPlayerController!.setPlaybackSpeed(1.5);
-                Navigator.pop(context);
+                Navigator.pop(ctx);
               },
               iconData: Icons.speed,
               title: '1.5x Speed',
             ),
             OptionItem(
-              onTap: () {
+              onTap: (ctx) {
                 _videoPlayerController!.setPlaybackSpeed(2.0);
-                Navigator.pop(context);
+                Navigator.pop(ctx);
               },
               iconData: Icons.speed,
               title: '2.0x Speed',
