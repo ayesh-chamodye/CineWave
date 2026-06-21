@@ -10,6 +10,8 @@ class AdService {
 
   RewardedInterstitialAd? _rewardedInterstitialAd;
   bool _isAdLoaded = false;
+  DateTime? _lastAdShowTime;
+  static const int _adCooldownMinutes = 15;
 
   // Production Ad unit IDs
   static const String _prodRewardedId = 'ca-app-pub-8287945486916442/3524855180';
@@ -57,14 +59,20 @@ class AdService {
   }
 
   void showRewardedInterstitialAd(VoidCallback onAdFinished) {
+    final now = DateTime.now();
+    if (_lastAdShowTime != null && 
+        now.difference(_lastAdShowTime!).inMinutes < _adCooldownMinutes) {
+      debugPrint('Ad in cooldown. Skipping...');
+      onAdFinished();
+      return;
+    }
+
     if (_isAdLoaded && _rewardedInterstitialAd != null) {
       _rewardedInterstitialAd!.show(
         onUserEarnedReward: (ad, reward) {
-          // User earned reward
+          _lastAdShowTime = DateTime.now();
         },
       );
-      // We call onAdFinished immediately or after dismissal? 
-      // Usually, we want to play the video AFTER the ad is closed.
       
       _rewardedInterstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
         onAdDismissedFullScreenContent: (ad) {
