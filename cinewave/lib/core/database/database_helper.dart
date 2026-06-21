@@ -19,7 +19,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -30,11 +30,30 @@ class DatabaseHelper {
       await _createWatchHistoryTable(db);
       await _createFavoritesTable(db);
     }
+    if (oldVersion < 3) {
+      await _createWatchlistTable(db);
+    }
   }
 
   Future _createDB(Database db, int version) async {
     await _createWatchHistoryTable(db);
     await _createFavoritesTable(db);
+    await _createWatchlistTable(db);
+  }
+
+  Future _createWatchlistTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE watchlist (
+        mediaId TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        posterUrl TEXT,
+        backdropUrl TEXT,
+        overview TEXT,
+        type TEXT NOT NULL,
+        rating REAL,
+        releaseDate TEXT
+      )
+    ''');
   }
 
   Future _createWatchHistoryTable(Database db) async {

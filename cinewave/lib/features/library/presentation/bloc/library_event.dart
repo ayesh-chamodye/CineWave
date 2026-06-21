@@ -26,6 +26,14 @@ class ToggleFavorite extends LibraryEvent {
   List<Object?> get props => [item];
 }
 
+class ToggleWatchlist extends LibraryEvent {
+  final FavoriteItem item;
+  const ToggleWatchlist(this.item);
+
+  @override
+  List<Object?> get props => [item];
+}
+
 class DeleteHistoryItem extends LibraryEvent {
   final String id;
   const DeleteHistoryItem(this.id);

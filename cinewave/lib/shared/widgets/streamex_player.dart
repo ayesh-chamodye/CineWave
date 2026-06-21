@@ -38,6 +38,7 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
   VideoPlayerController? _videoPlayerController;
   ChewieController? _chewieController;
   Timer? _historyTimer;
+  bool _showNextEpisodeButton = false;
 
   bool _isExtracting = true;
   String _errorMessage = '';
@@ -154,6 +155,22 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
       }
 
       await _videoPlayerController!.initialize();
+
+      _videoPlayerController!.addListener(() {
+        if (widget.isTv && _videoPlayerController!.value.isInitialized) {
+          final position = _videoPlayerController!.value.position;
+          final duration = _videoPlayerController!.value.duration;
+          if (duration - position < const Duration(seconds: 45)) {
+            if (!_showNextEpisodeButton) {
+              setState(() => _showNextEpisodeButton = true);
+            }
+          } else {
+            if (_showNextEpisodeButton) {
+              setState(() => _showNextEpisodeButton = false);
+            }
+          }
+        }
+      });
 
       _chewieController = ChewieController(
         videoPlayerController: _videoPlayerController!,
@@ -296,7 +313,40 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
 
           // 🔙 Back button (always visible)
           _buildBackButton(),
+
+          // ⏭️ Next Episode Button
+          if (_showNextEpisodeButton) _buildNextEpisodeButton(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildNextEpisodeButton() {
+    return Positioned(
+      bottom: 100,
+      right: 32,
+      child: ElevatedButton.icon(
+        onPressed: () {
+          final nextEpisode = (widget.episode ?? 1) + 1;
+          Navigator.of(context).pushReplacementNamed(
+            '/video-player',
+            arguments: {
+              'tmdbId': widget.tmdbId,
+              'title': widget.title,
+              'type': 'tv',
+              'isTv': true,
+              'seasonNumber': widget.season,
+              'episodeNumber': nextEpisode,
+              'posterUrl': widget.posterUrl,
+            },
+          );
+        },
+        icon: const Icon(Icons.skip_next, color: Colors.white),
+        label: const Text('Next Episode', style: TextStyle(color: Colors.white)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blueAccent.withValues(alpha: 0.8),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        ),
       ),
     );
   }

@@ -20,6 +20,7 @@ import 'package:cinewave/features/library/data/datasources/library_local_datasou
 import 'package:cinewave/features/library/data/repositories/library_repository.dart';
 import 'package:cinewave/features/library/presentation/bloc/library_bloc.dart';
 import 'package:cinewave/core/ads/ad_service.dart';
+import 'package:cinewave/core/theme/bloc/theme_bloc.dart';
 import 'package:cinewave/shared/routes/app_routes.dart';
 
 void main() async {
@@ -79,6 +80,9 @@ class CineWaveApp extends StatelessWidget {
             ),
           ),
           BlocProvider(
+            create: (context) => ThemeBloc(),
+          ),
+          BlocProvider(
             create: (context) => HomeBloc(
               homeRepository: context.read<HomeRepository>(),
             )..add(LoadHomeData()),
@@ -99,12 +103,18 @@ class CineWaveApp extends StatelessWidget {
             ),
           ),
         ],
-        child: MaterialApp(
-          title: 'CineWave',
-          theme: AppTheme.getTheme(),
-          debugShowCheckedModeBanner: false,
-          initialRoute: '/splash',
-          onGenerateRoute: AppRoutes.onGenerateRoute,
+        child: BlocBuilder<ThemeBloc, ThemeMode>(
+          builder: (context, themeMode) {
+            return MaterialApp(
+              title: 'CineWave',
+              theme: AppTheme.getTheme(), // Light theme placeholder
+              darkTheme: AppTheme.getTheme(), // You might want a specific light theme
+              themeMode: themeMode,
+              debugShowCheckedModeBanner: false,
+              initialRoute: '/splash',
+              onGenerateRoute: AppRoutes.onGenerateRoute,
+            );
+          },
         ),
       ),
     );

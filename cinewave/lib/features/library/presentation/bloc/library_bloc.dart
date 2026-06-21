@@ -10,6 +10,7 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     on<LoadLibrary>(_onLoadLibrary);
     on<AddToHistory>(_onAddToHistory);
     on<ToggleFavorite>(_onToggleFavorite);
+    on<ToggleWatchlist>(_onToggleWatchlist);
     on<DeleteHistoryItem>(_onDeleteHistoryItem);
     on<ClearHistory>(_onClearHistory);
   }
@@ -19,7 +20,8 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     try {
       final history = await repository.getWatchHistory();
       final favorites = await repository.getFavorites();
-      emit(LibraryLoaded(history: history, favorites: favorites));
+      final watchlist = await repository.getWatchlist();
+      emit(LibraryLoaded(history: history, favorites: favorites, watchlist: watchlist));
     } catch (e) {
       emit(LibraryError(e.toString()));
     }
@@ -37,6 +39,15 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
   Future<void> _onToggleFavorite(ToggleFavorite event, Emitter<LibraryState> emit) async {
     try {
       await repository.toggleFavorite(event.item);
+      add(LoadLibrary());
+    } catch (e) {
+      // Handle error
+    }
+  }
+
+  Future<void> _onToggleWatchlist(ToggleWatchlist event, Emitter<LibraryState> emit) async {
+    try {
+      await repository.toggleWatchlist(event.item);
       add(LoadLibrary());
     } catch (e) {
       // Handle error

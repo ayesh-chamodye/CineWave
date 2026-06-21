@@ -15,14 +15,16 @@ class LibraryLoading extends LibraryState {}
 class LibraryLoaded extends LibraryState {
   final List<WatchHistoryItem> history;
   final List<FavoriteItem> favorites;
+  final List<FavoriteItem> watchlist;
 
   const LibraryLoaded({
     required this.history,
     required this.favorites,
+    required this.watchlist,
   });
 
   @override
-  List<Object?> get props => [history, favorites];
+  List<Object?> get props => [history, favorites, watchlist];
 }
 
 class LibraryError extends LibraryState {

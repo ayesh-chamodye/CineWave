@@ -6,6 +6,7 @@ import 'package:cinewave/features/tv_detail/data/repositories/tv_detail_reposito
 import 'package:cinewave/shared/widgets/network_image.dart';
 import 'package:cinewave/core/models/media_models.dart';
 import 'package:cinewave/features/tv_detail/presentation/widgets/detail_info.dart';
+import 'package:cinewave/shared/widgets/banner_ad_widget.dart';
 import 'package:cinewave/shared/utils/link_extractor.dart';
 import 'package:cinewave/core/ads/ad_service.dart';
 import 'package:cinewave/features/library/presentation/bloc/library_bloc.dart';
@@ -238,9 +239,11 @@ class _TVDetailPageState extends State<TVDetailPage> {
                       BlocBuilder<LibraryBloc, LibraryState>(
                         builder: (context, state) {
                           bool isFav = false;
+                          bool isWatchlist = false;
                           bool inHistory = false;
                           if (state is LibraryLoaded) {
                             isFav = state.favorites.any((f) => f.mediaId == tvShow.id.toString());
+                            isWatchlist = state.watchlist.any((w) => w.mediaId == tvShow.id.toString());
                             inHistory = state.history.any((h) => h.mediaId == tvShow.id.toString());
                           }
                           return Row(
@@ -274,6 +277,37 @@ class _TVDetailPageState extends State<TVDetailPage> {
                                   ),
                                 ),
                               ),
+                              const SizedBox(width: 8),
+                              IconButton(
+                                onPressed: () {
+                                  context.read<LibraryBloc>().add(
+                                        ToggleWatchlist(
+                                          FavoriteItem(
+                                            mediaId: tvShow.id.toString(),
+                                            title: tvShow.name,
+                                            posterUrl: tvShow.posterUrl,
+                                            backdropUrl: tvShow.backdropUrl,
+                                            overview: tvShow.overview,
+                                            type: 'tv',
+                                            rating: tvShow.voteAverage,
+                                            releaseDate: tvShow.firstAirDate,
+                                          ),
+                                        ),
+                                      );
+                                },
+                                icon: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: Colors.white38),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Icon(
+                                    isWatchlist ? Icons.bookmark : Icons.bookmark_border,
+                                    color: isWatchlist ? Colors.blueAccent : Colors.white70,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
                               if (inHistory)
                                 IconButton(
                                   onPressed: () {
@@ -302,6 +336,8 @@ class _TVDetailPageState extends State<TVDetailPage> {
                     ],
                   ),
                 ),
+              const SizedBox(height: 12),
+              const BannerAdWidget(),
               const SizedBox(height: 20),
               DetailInfoWidget(tvShow: tvShow),
               const SizedBox(height: 20),

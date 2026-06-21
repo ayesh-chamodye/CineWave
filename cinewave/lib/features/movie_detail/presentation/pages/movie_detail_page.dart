@@ -4,6 +4,7 @@ import 'package:cinewave/features/movie_detail/presentation/movie_detail_bloc.da
 import 'package:cinewave/features/movie_detail/data/repositories/movie_detail_repository.dart';
 import 'package:cinewave/features/movie_detail/presentation/widgets/detail_info.dart';
 import 'package:cinewave/shared/widgets/network_image.dart';
+import 'package:cinewave/shared/widgets/banner_ad_widget.dart';
 import 'package:cinewave/core/models/media_models.dart';
 import 'package:cinewave/core/ads/ad_service.dart';
 import 'package:cinewave/features/library/presentation/bloc/library_bloc.dart';
@@ -97,9 +98,11 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                           BlocBuilder<LibraryBloc, LibraryState>(
                             builder: (context, state) {
                               bool isFav = false;
+                              bool isWatchlist = false;
                               bool inHistory = false;
                               if (state is LibraryLoaded) {
                                 isFav = state.favorites.any((f) => f.mediaId == movie.id.toString());
+                                isWatchlist = state.watchlist.any((w) => w.mediaId == movie.id.toString());
                                 inHistory = state.history.any((h) => h.mediaId == movie.id.toString());
                               }
                               return Row(
@@ -133,6 +136,37 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                                       ),
                                     ),
                                   ),
+                                  const SizedBox(width: 8),
+                                  IconButton(
+                                    onPressed: () {
+                                      context.read<LibraryBloc>().add(
+                                            ToggleWatchlist(
+                                              FavoriteItem(
+                                                mediaId: movie.id.toString(),
+                                                title: movie.title,
+                                                posterUrl: movie.posterUrl,
+                                                backdropUrl: movie.backdropUrl,
+                                                overview: movie.overview,
+                                                type: 'movie',
+                                                rating: movie.voteAverage,
+                                                releaseDate: movie.releaseDate,
+                                              ),
+                                            ),
+                                          );
+                                    },
+                                    icon: Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        border: Border.all(color: Colors.white38),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Icon(
+                                        isWatchlist ? Icons.bookmark : Icons.bookmark_border,
+                                        color: isWatchlist ? Colors.blueAccent : Colors.white70,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
                                   if (inHistory)
                                     IconButton(
                                       onPressed: () {
@@ -154,6 +188,8 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                         ],
                       ),
                     ),
+                  const SizedBox(height: 12),
+                  const BannerAdWidget(),
                   const SizedBox(height: 20),
                   DetailInfoWidget(movie: movie),
                 ],

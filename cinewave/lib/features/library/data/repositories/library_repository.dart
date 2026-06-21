@@ -13,4 +13,8 @@ class LibraryRepository {
   Future<void> toggleFavorite(FavoriteItem item) => localDataSource.toggleFavorite(item);
   Future<bool> isFavorite(String mediaId) => localDataSource.isFavorite(mediaId);
   Future<List<FavoriteItem>> getFavorites() => localDataSource.getFavorites();
+
+  Future<void> toggleWatchlist(FavoriteItem item) => localDataSource.toggleWatchlist(item);
+  Future<bool> isInWatchlist(String mediaId) => localDataSource.isInWatchlist(mediaId);
+  Future<List<FavoriteItem>> getWatchlist() => localDataSource.getWatchlist();
 }

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cinewave/core/theme/app_theme.dart';
+import 'package:cinewave/core/theme/bloc/theme_bloc.dart';
 import 'package:cinewave/core/constants/app_constants.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -35,9 +37,8 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _toggleDarkMode(bool value) async {
-    await _prefs.setBool('dark_mode', value);
+    await context.read<ThemeBloc>().toggleTheme(value);
     setState(() => _isDarkMode = value);
-    // Note: To fully apply theme change app-wide, you might want to use a Bloc/Provider at main level.
   }
 
   Future<void> _toggleAutoPlay(bool value) async {

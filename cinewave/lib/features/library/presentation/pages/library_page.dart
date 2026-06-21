@@ -5,6 +5,7 @@ import 'package:cinewave/features/library/presentation/bloc/library_event.dart';
 import 'package:cinewave/features/library/presentation/bloc/library_state.dart';
 import 'package:cinewave/core/models/library_models.dart';
 import 'package:cinewave/shared/widgets/network_image.dart';
+import 'package:cinewave/shared/widgets/banner_ad_widget.dart';
 import 'package:cinewave/core/ads/ad_service.dart';
 
 import 'package:cinewave/core/models/media_models.dart';
@@ -69,18 +70,25 @@ class _LibraryPageState extends State<LibraryPage> {
             final continuing = state.history.where((item) => !item.isCompleted).toList();
             final watched = state.history.where((item) => item.isCompleted).toList();
             final favorites = state.favorites;
+            final watchlist = state.watchlist;
 
-            if (continuing.isEmpty && watched.isEmpty && favorites.isEmpty) {
+            if (continuing.isEmpty && watched.isEmpty && favorites.isEmpty && watchlist.isEmpty) {
               return _buildEmptyState();
             }
 
             return CustomScrollView(
               slivers: [
+                const SliverToBoxAdapter(child: BannerAdWidget()),
                 if (continuing.isNotEmpty)
                   _buildSectionTitle('Continue Watching'),
                 if (continuing.isNotEmpty)
                   _buildHorizontalHistoryList(continuing),
                 
+                if (watchlist.isNotEmpty)
+                  _buildSectionTitle('Watchlist'),
+                if (watchlist.isNotEmpty)
+                  _buildHorizontalFavoritesList(watchlist),
+
                 if (favorites.isNotEmpty)
                   _buildSectionTitle('My Favorites'),
                 if (favorites.isNotEmpty)
@@ -94,7 +102,8 @@ class _LibraryPageState extends State<LibraryPage> {
                 const SliverToBoxAdapter(child: SizedBox(height: 24)),
               ],
             );
-          } else if (state is LibraryError) {
+          }
+else if (state is LibraryError) {
             return Center(child: Text(state.message, style: const TextStyle(color: Colors.red)));
           }
           return const SizedBox.shrink();
