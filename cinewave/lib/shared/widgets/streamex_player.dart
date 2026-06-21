@@ -598,22 +598,17 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
                 }
               },
               child: SizedBox.expand(
-                child: Center(
-                  child: AspectRatio(
-                    aspectRatio: _videoPlayerController!.value.aspectRatio,
-                    child: FittedBox(
-                      fit: _videoFit,
-                      clipBehavior: Clip.hardEdge,
-                      child: SizedBox(
-                        width: _videoPlayerController!.value.size.width > 0 
-                            ? _videoPlayerController!.value.size.width 
-                            : 1280,
-                        height: _videoPlayerController!.value.size.height > 0 
-                            ? _videoPlayerController!.value.size.height 
-                            : 720,
-                        child: Chewie(controller: _chewieController!),
-                      ),
-                    ),
+                child: FittedBox(
+                  fit: _videoFit,
+                  clipBehavior: Clip.hardEdge,
+                  child: SizedBox(
+                    width: _videoPlayerController!.value.size.width > 0 
+                        ? _videoPlayerController!.value.size.width 
+                        : 1280,
+                    height: _videoPlayerController!.value.size.height > 0 
+                        ? _videoPlayerController!.value.size.height 
+                        : 720,
+                    child: Chewie(controller: _chewieController!),
                   ),
                 ),
               ),
