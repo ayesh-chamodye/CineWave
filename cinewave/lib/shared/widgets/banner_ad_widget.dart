@@ -63,6 +63,14 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
   @override
   Widget build(BuildContext context) {
     if (_bannerAd == null || !_isLoaded) {
+      // In debug mode, show a container so you know where the ad SHOULD be
+      if (kDebugMode) {
+        return Container(
+          height: 50,
+          color: Colors.white10,
+          child: const Center(child: Text('Ad Loading...', style: TextStyle(color: Colors.white24, fontSize: 10))),
+        );
+      }
       return const SizedBox(height: 0);
     }
 

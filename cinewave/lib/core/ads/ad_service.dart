@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
@@ -10,16 +11,16 @@ class AdService {
   RewardedInterstitialAd? _rewardedInterstitialAd;
   bool _isAdLoaded = false;
 
-  // Ad unit IDs
-  final String _rewardedInterstitialAdUnitId = Platform.isAndroid
-      ? 'ca-app-pub-8287945486916442/3524855180'
-      : 'ca-app-pub-8287945486916442/3524855180';
+  // Production Ad unit IDs
+  static const String _prodRewardedId = 'ca-app-pub-8287945486916442/3524855180';
+  static const String _prodBannerId = 'ca-app-pub-8287945486916442/9946793305';
 
-  final String _bannerAdUnitId = Platform.isAndroid
-      ? 'ca-app-pub-8287945486916442/9946793305'
-      : 'ca-app-pub-8287945486916442/9946793305';
+  // Test Ad unit IDs (Standard Google Test IDs)
+  static const String _testRewardedId = 'ca-app-pub-3940256099942544/5354046379';
+  static const String _testBannerId = 'ca-app-pub-3940256099942544/6300978111';
 
-  String get bannerAdUnitId => _bannerAdUnitId;
+  String get rewardedInterstitialAdUnitId => kDebugMode ? _testRewardedId : _prodRewardedId;
+  String get bannerAdUnitId => kDebugMode ? _testBannerId : _prodBannerId;
 
   Future<void> init() async {
     await MobileAds.instance.initialize();
@@ -28,7 +29,7 @@ class AdService {
 
   void loadRewardedInterstitialAd() {
     RewardedInterstitialAd.load(
-      adUnitId: _rewardedInterstitialAdUnitId,
+      adUnitId: rewardedInterstitialAdUnitId,
       request: const AdRequest(),
       rewardedInterstitialAdLoadCallback: RewardedInterstitialAdLoadCallback(
         onAdLoaded: (ad) {
