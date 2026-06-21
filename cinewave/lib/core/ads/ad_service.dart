@@ -16,8 +16,8 @@ class AdService {
       : 'ca-app-pub-8287945486916442/3524855180';
 
   final String _bannerAdUnitId = Platform.isAndroid
-      ? 'ca-app-pub-3940256099942544/6300978111' // Test ID, replace with real one later
-      : 'ca-app-pub-3940256099942544/2934735716';
+      ? 'ca-app-pub-8287945486916442/9946793305'
+      : 'ca-app-pub-8287945486916442/9946793305';
 
   Future<void> init() async {
     await MobileAds.instance.initialize();
