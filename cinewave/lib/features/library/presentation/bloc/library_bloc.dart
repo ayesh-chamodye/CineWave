@@ -65,10 +65,7 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
 
   Future<void> _onClearHistory(ClearHistory event, Emitter<LibraryState> emit) async {
     try {
-      final history = await repository.getWatchHistory();
-      for (var item in history) {
-        await repository.deleteWatchHistoryItem(item.id);
-      }
+      await repository.clearWatchHistory();
       add(LoadLibrary());
     } catch (e) {
       // Handle error

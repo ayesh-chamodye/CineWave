@@ -31,6 +31,11 @@ class LibraryLocalDataSource {
     await db.delete('watch_history', where: 'id = ?', whereArgs: [id]);
   }
 
+  Future<void> clearWatchHistory() async {
+    final db = await dbHelper.database;
+    await db.delete('watch_history');
+  }
+
   // Favorites
   Future<void> toggleFavorite(FavoriteItem item) async {
     final db = await dbHelper.database;

@@ -9,6 +9,7 @@ class LibraryRepository {
   Future<void> saveWatchHistory(WatchHistoryItem item) => localDataSource.saveWatchHistory(item);
   Future<List<WatchHistoryItem>> getWatchHistory() => localDataSource.getWatchHistory();
   Future<void> deleteWatchHistoryItem(String id) => localDataSource.deleteWatchHistoryItem(id);
+  Future<void> clearWatchHistory() => localDataSource.clearWatchHistory();
 
   Future<void> toggleFavorite(FavoriteItem item) => localDataSource.toggleFavorite(item);
   Future<bool> isFavorite(String mediaId) => localDataSource.isFavorite(mediaId);
