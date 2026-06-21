@@ -40,6 +40,8 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
   ChewieController? _chewieController;
   Timer? _historyTimer;
   bool _showNextEpisodeButton = false;
+  MediaSubtitle? _selectedSubtitle;
+  List<MediaSubtitle>? _availableSubtitles;
 
   bool _isExtracting = true;
   String _errorMessage = '';
@@ -100,28 +102,51 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.black87,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
       builder: (context) {
-        return ListView.builder(
-          itemCount: subs.length + 1,
-          itemBuilder: (context, index) {
-            if (index == 0) {
-              return ListTile(
-                title: const Text('None', style: TextStyle(color: Colors.white)),
-                onTap: () {
-                  _chewieController?.setSubtitle([]);
-                  Navigator.pop(context);
-                },
-              );
-            }
-            final sub = subs[index - 1];
-            return ListTile(
-              title: Text(sub.label, style: const TextStyle(color: Colors.white)),
-              onTap: () {
-                _loadSubtitle(sub);
-                Navigator.pop(context);
-              },
-            );
-          },
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Select Subtitles', 
+                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: subs.length + 1,
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      return ListTile(
+                        leading: Icon(Icons.close, color: _selectedSubtitle == null ? Colors.blueAccent : Colors.white70),
+                        title: Text('None', style: TextStyle(color: _selectedSubtitle == null ? Colors.blueAccent : Colors.white)),
+                        trailing: _selectedSubtitle == null ? const Icon(Icons.check, color: Colors.blueAccent) : null,
+                        onTap: () {
+                          setState(() => _selectedSubtitle = null);
+                          _chewieController?.setSubtitle([]);
+                          Navigator.pop(context);
+                        },
+                      );
+                    }
+                    final sub = subs[index - 1];
+                    final isSelected = _selectedSubtitle?.url == sub.url;
+                    return ListTile(
+                      leading: Icon(Icons.subtitles, color: isSelected ? Colors.blueAccent : Colors.white70),
+                      title: Text(sub.label, style: TextStyle(color: isSelected ? Colors.blueAccent : Colors.white)),
+                      trailing: isSelected ? const Icon(Icons.check, color: Colors.blueAccent) : null,
+                      onTap: () {
+                        _loadSubtitle(sub);
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -129,6 +154,7 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
 
   Future<void> _loadSubtitle(MediaSubtitle sub) async {
     try {
+      setState(() => _selectedSubtitle = sub);
       final response = await http.get(Uri.parse(sub.url));
       if (response.statusCode == 200) {
         final List<Subtitle> parsedSubs = _parseVtt(response.body);
@@ -248,6 +274,7 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
   Future<void> _initializeNativePlayer(
       String url, Map<String, String> headers, List<MediaSubtitle>? subtitles) async {
     debugPrint('▶️ Initializing player: $url');
+    _availableSubtitles = subtitles;
 
     // Check if this is an HLS manifest and try to use cached version
     final String manifestSource = await _getPotentiallyCachedManifest(url, headers);
@@ -475,9 +502,32 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
           // 🔙 Back button (always visible)
           _buildBackButton(),
 
+          // 💬 Subtitle selector button (top right)
+          if (!_isExtracting && _availableSubtitles != null && _availableSubtitles!.isNotEmpty)
+            _buildSubtitleButton(),
+
           // ⏭️ Next Episode Button
           if (_showNextEpisodeButton) _buildNextEpisodeButton(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSubtitleButton() {
+    return Positioned(
+      top: 40,
+      right: 16,
+      child: Material(
+        color: Colors.black45,
+        shape: const CircleBorder(),
+        child: IconButton(
+          icon: Icon(
+            _selectedSubtitle != null ? Icons.subtitles : Icons.subtitles_off,
+            color: _selectedSubtitle != null ? Colors.blueAccent : Colors.white,
+          ),
+          tooltip: 'Select Subtitles',
+          onPressed: () => _showSubtitleMenu(_availableSubtitles!),
+        ),
       ),
     );
   }
