@@ -117,6 +117,7 @@ class TVShow {
     return raw
         .whereType<Map<String, dynamic>>()
         .map((json) => SeasonInfo.fromJson(json))
+        .where((s) => s.seasonNumber != 0)
         .toList();
   }
 
