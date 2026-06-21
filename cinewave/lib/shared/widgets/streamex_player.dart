@@ -10,6 +10,8 @@ import 'package:cinewave/features/library/presentation/bloc/library_bloc.dart';
 import 'package:cinewave/features/library/presentation/bloc/library_event.dart';
 import 'package:cinewave/core/models/library_models.dart';
 import 'package:http/http.dart' as http;
+import 'package:file_picker/file_picker.dart';
+import 'package:path/path.dart' as p;
 
 class StreamexPlayer extends StatefulWidget {
   final String tmdbId;
@@ -111,8 +113,22 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Select Subtitles', 
-                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const SizedBox(width: 48),
+                  const Text('Select Subtitles', 
+                    style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  IconButton(
+                    icon: const Icon(Icons.add, color: Colors.blueAccent),
+                    tooltip: 'Add Custom Subtitle',
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _showAddCustomSubtitleOptions();
+                    },
+                  ),
+                ],
+              ),
               const SizedBox(height: 12),
               Flexible(
                 child: ListView.builder(
@@ -152,6 +168,131 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
     );
   }
 
+  void _showAddCustomSubtitleOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.black87,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Add Custom Subtitle', 
+                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildCustomOption(
+                    icon: Icons.file_open,
+                    label: 'Local File',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _pickLocalSubtitle();
+                    },
+                  ),
+                  _buildCustomOption(
+                    icon: Icons.link,
+                    label: 'From URL',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showUrlInputDialog();
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCustomOption({required IconData icon, required String label, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white10,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: Colors.blueAccent, size: 32),
+          ),
+          const SizedBox(height: 8),
+          Text(label, style: const TextStyle(color: Colors.white, fontSize: 14)),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickLocalSubtitle() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['srt', 'vtt'],
+      );
+
+      if (result != null && result.files.single.path != null) {
+        final file = File(result.files.single.path!);
+        final content = await file.readAsString();
+        final fileName = p.basename(file.path);
+        
+        final List<Subtitle> parsedSubs = _parseVtt(content);
+        if (parsedSubs.isNotEmpty && _chewieController != null) {
+          _chewieController!.setSubtitle(parsedSubs);
+          setState(() {
+            _selectedSubtitle = MediaSubtitle(url: file.path, label: fileName, language: 'custom');
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Custom subtitle loaded: $fileName')),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error picking subtitle: $e');
+    }
+  }
+
+  void _showUrlInputDialog() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        title: const Text('Subtitle URL', style: TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: controller,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            hintText: 'https://example.com/sub.vtt',
+            hintStyle: TextStyle(color: Colors.white24),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL')),
+          TextButton(
+            onPressed: () {
+              final url = controller.text.trim();
+              if (url.isNotEmpty) {
+                Navigator.pop(context);
+                _loadSubtitle(MediaSubtitle(url: url, label: 'Remote Sub', language: 'custom'));
+              }
+            },
+            child: const Text('LOAD'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _loadSubtitle(MediaSubtitle sub) async {
     try {
       setState(() => _selectedSubtitle = sub);
@@ -168,24 +309,24 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
     }
   }
 
-  List<Subtitle> _parseVtt(String vttContent) {
+  List<Subtitle> _parseVtt(String content) {
     final List<Subtitle> subtitles = [];
     try {
-      final lines = vttContent.split('\n');
+      // Basic normalization: handle different line endings and remove SRT index numbers
+      final lines = content.replaceAll('\r\n', '\n').split('\n');
       Duration? start;
       Duration? end;
       String text = '';
 
-      final timeRegex = RegExp(r'(\d{2}:)?\d{2}:\d{2}\.\d{3}');
-
       for (var line in lines) {
-        if (line.contains('-->')) {
-          final parts = line.split('-->');
+        final trimmed = line.trim();
+        if (trimmed.contains('-->')) {
+          final parts = trimmed.split('-->');
           if (parts.length == 2) {
             start = _parseVttTime(parts[0].trim());
             end = _parseVttTime(parts[1].trim());
           }
-        } else if (line.trim().isEmpty) {
+        } else if (trimmed.isEmpty) {
           if (start != null && end != null && text.isNotEmpty) {
             subtitles.add(Subtitle(
               index: subtitles.length,
@@ -197,8 +338,11 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
             end = null;
             text = '';
           }
-        } else if (!line.startsWith('WEBVTT') && !line.startsWith('NOTE')) {
-          text += '$line\n';
+        } else if (RegExp(r'^\d+$').hasMatch(trimmed)) {
+          // Skip SRT index numbers
+          continue;
+        } else if (!trimmed.startsWith('WEBVTT') && !trimmed.startsWith('NOTE')) {
+          text += '$trimmed\n';
         }
       }
       // Final one
@@ -211,13 +355,16 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
         ));
       }
     } catch (e) {
-      debugPrint('❌ VTT Parse Error: $e');
+      debugPrint('❌ Subtitle Parse Error: $e');
     }
     return subtitles;
   }
 
   Duration _parseVttTime(String timeStr) {
-    final parts = timeStr.split(':');
+    // Handle both VTT (00:00:20.000) and SRT (00:00:20,000)
+    final normalizedTime = timeStr.replaceAll(',', '.');
+    final parts = normalizedTime.split(':');
+
     if (parts.length == 3) {
       final hours = int.parse(parts[0]);
       final minutes = int.parse(parts[1]);
