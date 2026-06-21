@@ -345,6 +345,7 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
         allowFullScreen: true,
         fullScreenByDefault: true,
         showControls: true,
+        showOptions: false, // Hide the three dots gear menu
         placeholder: Container(color: Colors.black),
         materialProgressColors: ChewieProgressColors(
           playedColor: Colors.blueAccent,
@@ -352,47 +353,6 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
           backgroundColor: Colors.white24,
           bufferedColor: Colors.white54,
         ),
-        additionalOptions: (context) {
-          final List<OptionItem> options = [
-            OptionItem(
-              onTap: (ctx) {
-                _videoPlayerController!.setPlaybackSpeed(1.0);
-                Navigator.pop(ctx);
-              },
-              iconData: Icons.speed,
-              title: 'Normal Speed',
-            ),
-            OptionItem(
-              onTap: (ctx) {
-                _videoPlayerController!.setPlaybackSpeed(1.5);
-                Navigator.pop(ctx);
-              },
-              iconData: Icons.speed,
-              title: '1.5x Speed',
-            ),
-            OptionItem(
-              onTap: (ctx) {
-                _videoPlayerController!.setPlaybackSpeed(2.0);
-                Navigator.pop(ctx);
-              },
-              iconData: Icons.speed,
-              title: '2.0x Speed',
-            ),
-          ];
-
-          if (subtitles != null && subtitles.isNotEmpty) {
-            options.add(OptionItem(
-              onTap: (ctx) {
-                Navigator.pop(ctx);
-                _showSubtitleMenu(subtitles);
-              },
-              iconData: Icons.subtitles,
-              title: 'Subtitles (${subtitles.length})',
-            ));
-          }
-
-          return options;
-        },
       );
 
       if (mounted) {
@@ -499,12 +459,8 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
           if (!_isExtracting && _errorMessage.isNotEmpty)
             _buildErrorOverlay(),
 
-          // 🔙 Back button (always visible)
-          _buildBackButton(),
-
-          // 💬 Subtitle selector button (top right)
-          if (!_isExtracting && _availableSubtitles != null && _availableSubtitles!.isNotEmpty)
-            _buildSubtitleButton(),
+          // 🔙 Top Control Bar
+          if (!_isExtracting) _buildTopControlBar(),
 
           // ⏭️ Next Episode Button
           if (_showNextEpisodeButton) _buildNextEpisodeButton(),
@@ -513,52 +469,158 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
     );
   }
 
-  Widget _buildSubtitleButton() {
+  Widget _buildTopControlBar() {
     return Positioned(
       top: 40,
-      right: 16,
-      child: Material(
-        color: Colors.black45,
-        shape: const CircleBorder(),
-        child: IconButton(
-          icon: Icon(
-            _selectedSubtitle != null ? Icons.subtitles : Icons.subtitles_off,
-            color: _selectedSubtitle != null ? Colors.blueAccent : Colors.white,
-          ),
-          tooltip: 'Select Subtitles',
-          onPressed: () => _showSubtitleMenu(_availableSubtitles!),
+      left: 0,
+      right: 0,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          children: [
+            // Back Button
+            Material(
+              color: Colors.black45,
+              shape: const CircleBorder(),
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: _handleBack,
+              ),
+            ),
+            const Spacer(),
+            // Speed Button
+            _buildControlButton(
+              icon: Icons.speed,
+              label: '${_videoPlayerController?.value.playbackSpeed}x',
+              onTap: _showSpeedMenu,
+            ),
+            const SizedBox(width: 8),
+            // Quality Button (Placeholder for now)
+            _buildControlButton(
+              icon: Icons.high_quality,
+              label: 'Auto',
+              onTap: _showQualityMenu,
+            ),
+            const SizedBox(width: 8),
+            // Subtitle Button
+            if (_availableSubtitles != null && _availableSubtitles!.isNotEmpty)
+              _buildControlButton(
+                icon: _selectedSubtitle != null ? Icons.subtitles : Icons.subtitles_off,
+                label: 'CC',
+                color: _selectedSubtitle != null ? Colors.blueAccent : Colors.white,
+                onTap: () => _showSubtitleMenu(_availableSubtitles!),
+              ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildNextEpisodeButton() {
-    return Positioned(
-      bottom: 100,
-      right: 32,
-      child: ElevatedButton.icon(
-        onPressed: () {
-          final nextEpisode = (widget.episode ?? 1) + 1;
-          Navigator.of(context).pushReplacementNamed(
-            '/video-player',
-            arguments: {
-              'tmdbId': widget.tmdbId,
-              'title': widget.title,
-              'type': 'tv',
-              'isTv': true,
-              'seasonNumber': widget.season,
-              'episodeNumber': nextEpisode,
-              'posterUrl': widget.posterUrl,
-            },
-          );
-        },
-        icon: const Icon(Icons.skip_next, color: Colors.white),
-        label: const Text('Next Episode', style: TextStyle(color: Colors.white)),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blueAccent.withValues(alpha: 0.8),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+  Widget _buildControlButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    Color color = Colors.white,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.black45,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 18),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+          ],
         ),
       ),
+    );
+  }
+
+  void _showSpeedMenu() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.black87,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        final speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Playback Speed', 
+                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: speeds.length,
+                  itemBuilder: (context, index) {
+                    final speed = speeds[index];
+                    final isSelected = _videoPlayerController?.value.playbackSpeed == speed;
+                    return ListTile(
+                      leading: Icon(Icons.speed, color: isSelected ? Colors.blueAccent : Colors.white70),
+                      title: Text('${speed}x', style: TextStyle(color: isSelected ? Colors.blueAccent : Colors.white)),
+                      trailing: isSelected ? const Icon(Icons.check, color: Colors.blueAccent) : null,
+                      onTap: () {
+                        setState(() {
+                          _videoPlayerController?.setPlaybackSpeed(speed);
+                        });
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showQualityMenu() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.black87,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Video Quality', 
+                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: const Icon(Icons.auto_awesome, color: Colors.blueAccent),
+                title: const Text('Auto (Recommended)', style: TextStyle(color: Colors.blueAccent)),
+                trailing: const Icon(Icons.check, color: Colors.blueAccent),
+                onTap: () => Navigator.pop(context),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Text('Quality switching is automatically handled by the player for the best experience.', 
+                  style: TextStyle(color: Colors.white54, fontSize: 12)),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
