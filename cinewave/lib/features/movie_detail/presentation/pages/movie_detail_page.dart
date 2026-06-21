@@ -128,37 +128,57 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                           BlocBuilder<LibraryBloc, LibraryState>(
                             builder: (context, state) {
                               bool isFav = false;
+                              bool inHistory = false;
                               if (state is LibraryLoaded) {
                                 isFav = state.favorites.any((f) => f.mediaId == movie.id.toString());
+                                inHistory = state.history.any((h) => h.mediaId == movie.id.toString());
                               }
-                              return IconButton(
-                                onPressed: () {
-                                  context.read<LibraryBloc>().add(
-                                        ToggleFavorite(
-                                          FavoriteItem(
-                                            mediaId: movie.id.toString(),
-                                            title: movie.title,
-                                            posterUrl: movie.posterUrl,
-                                            backdropUrl: movie.backdropUrl,
-                                            overview: movie.overview,
-                                            type: 'movie',
-                                            rating: movie.voteAverage,
-                                            releaseDate: movie.releaseDate,
-                                          ),
+                              return Row(
+                                children: [
+                                  IconButton(
+                                    onPressed: () {
+                                      context.read<LibraryBloc>().add(
+                                            ToggleFavorite(
+                                              FavoriteItem(
+                                                mediaId: movie.id.toString(),
+                                                title: movie.title,
+                                                posterUrl: movie.posterUrl,
+                                                backdropUrl: movie.backdropUrl,
+                                                overview: movie.overview,
+                                                type: 'movie',
+                                                rating: movie.voteAverage,
+                                                releaseDate: movie.releaseDate,
+                                              ),
+                                            ),
+                                          );
+                                    },
+                                    icon: Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        border: Border.all(color: Colors.white38),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Icon(
+                                        isFav ? Icons.favorite : Icons.favorite_border,
+                                        color: isFav ? Colors.red : Colors.white70,
+                                      ),
+                                    ),
+                                  ),
+                                  if (inHistory)
+                                    IconButton(
+                                      onPressed: () {
+                                        context.read<LibraryBloc>().add(DeleteHistoryItem('movie_${movie.id}'));
+                                      },
+                                      icon: Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          border: Border.all(color: Colors.white38),
+                                          borderRadius: BorderRadius.circular(4),
                                         ),
-                                      );
-                                },
-                                icon: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.white38),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Icon(
-                                    isFav ? Icons.favorite : Icons.favorite_border,
-                                    color: isFav ? Colors.red : Colors.white70,
-                                  ),
-                                ),
+                                        child: const Icon(Icons.history_toggle_off, color: Colors.white70),
+                                      ),
+                                    ),
+                                ],
                               );
                             },
                           ),

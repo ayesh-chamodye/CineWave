@@ -162,6 +162,7 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
         aspectRatio: _videoPlayerController!.value.aspectRatio,
         allowFullScreen: true,
         fullScreenByDefault: true,
+        showControls: true,
         placeholder: Container(color: Colors.black),
         materialProgressColors: ChewieProgressColors(
           playedColor: Colors.blueAccent,
@@ -169,6 +170,34 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
           backgroundColor: Colors.white24,
           bufferedColor: Colors.white54,
         ),
+        additionalOptions: (context) {
+          return [
+            OptionItem(
+              onTap: () {
+                _videoPlayerController!.setPlaybackSpeed(1.0);
+                Navigator.pop(context);
+              },
+              iconData: Icons.speed,
+              title: 'Normal Speed',
+            ),
+            OptionItem(
+              onTap: () {
+                _videoPlayerController!.setPlaybackSpeed(1.5);
+                Navigator.pop(context);
+              },
+              iconData: Icons.speed,
+              title: '1.5x Speed',
+            ),
+            OptionItem(
+              onTap: () {
+                _videoPlayerController!.setPlaybackSpeed(2.0);
+                Navigator.pop(context);
+              },
+              iconData: Icons.speed,
+              title: '2.0x Speed',
+            ),
+          ];
+        },
       );
 
       if (mounted) {
@@ -239,9 +268,23 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
         children: [
           // 📺 Native player
           if (_chewieController != null)
-            Container(
-              color: Colors.black,
-              child: Chewie(controller: _chewieController!),
+            GestureDetector(
+              onDoubleTapDown: (details) {
+                final screenWidth = MediaQuery.of(context).size.width;
+                if (details.globalPosition.dx < screenWidth / 2) {
+                  // Rewind 10s
+                  final newPos = _videoPlayerController!.value.position - const Duration(seconds: 10);
+                  _videoPlayerController!.seekTo(newPos < Duration.zero ? Duration.zero : newPos);
+                } else {
+                  // Forward 10s
+                  final newPos = _videoPlayerController!.value.position + const Duration(seconds: 10);
+                  _videoPlayerController!.seekTo(newPos);
+                }
+              },
+              child: Container(
+                color: Colors.black,
+                child: Chewie(controller: _chewieController!),
+              ),
             ),
 
           // ⏳ Extracting / loading overlay

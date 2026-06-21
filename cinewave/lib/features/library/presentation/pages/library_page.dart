@@ -31,6 +31,35 @@ class _LibraryPageState extends State<LibraryPage> {
         title: const Text('My Library', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.black,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_sweep_outlined, color: Colors.white70),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  backgroundColor: const Color(0xFF1A1A1A),
+                  title: const Text('Clear History?', style: TextStyle(color: Colors.white)),
+                  content: const Text('This will remove all items from your watch history.',
+                      style: TextStyle(color: Colors.white70)),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('CANCEL'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        context.read<LibraryBloc>().add(ClearHistory());
+                        Navigator.pop(context);
+                      },
+                      child: const Text('CLEAR', style: TextStyle(color: Colors.red)),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: BlocBuilder<LibraryBloc, LibraryState>(
         builder: (context, state) {

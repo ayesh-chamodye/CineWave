@@ -33,3 +33,5 @@ class DeleteHistoryItem extends LibraryEvent {
   @override
   List<Object?> get props => [id];
 }
+
+class ClearHistory extends LibraryEvent {}

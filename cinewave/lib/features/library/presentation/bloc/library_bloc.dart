@@ -11,6 +11,7 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
     on<AddToHistory>(_onAddToHistory);
     on<ToggleFavorite>(_onToggleFavorite);
     on<DeleteHistoryItem>(_onDeleteHistoryItem);
+    on<ClearHistory>(_onClearHistory);
   }
 
   Future<void> _onLoadLibrary(LoadLibrary event, Emitter<LibraryState> emit) async {
@@ -45,6 +46,18 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
   Future<void> _onDeleteHistoryItem(DeleteHistoryItem event, Emitter<LibraryState> emit) async {
     try {
       await repository.deleteWatchHistoryItem(event.id);
+      add(LoadLibrary());
+    } catch (e) {
+      // Handle error
+    }
+  }
+
+  Future<void> _onClearHistory(ClearHistory event, Emitter<LibraryState> emit) async {
+    try {
+      final history = await repository.getWatchHistory();
+      for (var item in history) {
+        await repository.deleteWatchHistoryItem(item.id);
+      }
       add(LoadLibrary());
     } catch (e) {
       // Handle error

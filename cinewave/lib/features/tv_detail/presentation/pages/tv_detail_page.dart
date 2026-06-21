@@ -236,37 +236,62 @@ class _TVDetailPageState extends State<TVDetailPage> {
                       BlocBuilder<LibraryBloc, LibraryState>(
                         builder: (context, state) {
                           bool isFav = false;
+                          bool inHistory = false;
                           if (state is LibraryLoaded) {
                             isFav = state.favorites.any((f) => f.mediaId == tvShow.id.toString());
+                            inHistory = state.history.any((h) => h.mediaId == tvShow.id.toString());
                           }
-                          return IconButton(
-                            onPressed: () {
-                              context.read<LibraryBloc>().add(
-                                    ToggleFavorite(
-                                      FavoriteItem(
-                                        mediaId: tvShow.id.toString(),
-                                        title: tvShow.name,
-                                        posterUrl: tvShow.posterUrl,
-                                        backdropUrl: tvShow.backdropUrl,
-                                        overview: tvShow.overview,
-                                        type: 'tv',
-                                        rating: tvShow.voteAverage,
-                                        releaseDate: tvShow.firstAirDate,
-                                      ),
+                          return Row(
+                            children: [
+                              IconButton(
+                                onPressed: () {
+                                  context.read<LibraryBloc>().add(
+                                        ToggleFavorite(
+                                          FavoriteItem(
+                                            mediaId: tvShow.id.toString(),
+                                            title: tvShow.name,
+                                            posterUrl: tvShow.posterUrl,
+                                            backdropUrl: tvShow.backdropUrl,
+                                            overview: tvShow.overview,
+                                            type: 'tv',
+                                            rating: tvShow.voteAverage,
+                                            releaseDate: tvShow.firstAirDate,
+                                          ),
+                                        ),
+                                      );
+                                },
+                                icon: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: Colors.white38),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Icon(
+                                    isFav ? Icons.favorite : Icons.favorite_border,
+                                    color: isFav ? Colors.red : Colors.white70,
+                                  ),
+                                ),
+                              ),
+                              if (inHistory)
+                                IconButton(
+                                  onPressed: () {
+                                    // Note: History ID might be complex for TV shows, but usually it starts with tv_ID
+                                    // For simplicity, let's find the first one or clear all for this TV show
+                                    final historyItems = state.history.where((h) => h.mediaId == tvShow.id.toString());
+                                    for (var item in historyItems) {
+                                      context.read<LibraryBloc>().add(DeleteHistoryItem(item.id));
+                                    }
+                                  },
+                                  icon: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(color: Colors.white38),
+                                      borderRadius: BorderRadius.circular(4),
                                     ),
-                                  );
-                            },
-                            icon: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.white38),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Icon(
-                                isFav ? Icons.favorite : Icons.favorite_border,
-                                color: isFav ? Colors.red : Colors.white70,
-                              ),
-                            ),
+                                    child: const Icon(Icons.history_toggle_off, color: Colors.white70),
+                                  ),
+                                ),
+                            ],
                           );
                         },
                       ),
