@@ -580,6 +580,7 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
+        alignment: Alignment.center,
         children: [
           // 📺 Native player
           if (_chewieController != null)
@@ -596,22 +597,22 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
                   _videoPlayerController!.seekTo(newPos);
                 }
               },
-              child: Container(
-                width: double.infinity,
-                height: double.infinity,
-                color: Colors.black,
+              child: SizedBox.expand(
                 child: Center(
-                  child: FittedBox(
-                    fit: _videoFit,
-                    clipBehavior: Clip.hardEdge,
-                    child: SizedBox(
-                      width: (_videoPlayerController!.value.size.width > 0) 
-                          ? _videoPlayerController!.value.size.width 
-                          : 1280,
-                      height: (_videoPlayerController!.value.size.height > 0) 
-                          ? _videoPlayerController!.value.size.height 
-                          : 720,
-                      child: Chewie(controller: _chewieController!),
+                  child: AspectRatio(
+                    aspectRatio: _videoPlayerController!.value.aspectRatio,
+                    child: FittedBox(
+                      fit: _videoFit,
+                      clipBehavior: Clip.hardEdge,
+                      child: SizedBox(
+                        width: _videoPlayerController!.value.size.width > 0 
+                            ? _videoPlayerController!.value.size.width 
+                            : 1280,
+                        height: _videoPlayerController!.value.size.height > 0 
+                            ? _videoPlayerController!.value.size.height 
+                            : 720,
+                        child: Chewie(controller: _chewieController!),
+                      ),
                     ),
                   ),
                 ),
@@ -641,52 +642,54 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
 
   Widget _buildTopControlBar() {
     return Positioned(
-      top: 40,
+      top: 0,
       left: 0,
       right: 0,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Row(
-          children: [
-            // Back Button
-            Material(
-              color: Colors.black45,
-              shape: const CircleBorder(),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: _handleBack,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            children: [
+              // Back Button
+              Material(
+                color: Colors.black45,
+                shape: const CircleBorder(),
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: _handleBack,
+                ),
               ),
-            ),
-            const Spacer(),
-            // Speed Button
-            _buildControlButton(
-              icon: Icons.speed,
-              label: '${_videoPlayerController?.value.playbackSpeed}x',
-              onTap: _showSpeedMenu,
-            ),
-            const SizedBox(width: 8),
-            // Quality Button (Placeholder for now)
-            _buildControlButton(
-              icon: Icons.high_quality,
-              label: 'Auto',
-              onTap: _showQualityMenu,
-            ),
-            const SizedBox(width: 8),
-            // Aspect Ratio Button
-            _buildControlButton(
-              icon: Icons.aspect_ratio,
-              label: _getFitLabel(),
-              onTap: _toggleVideoFit,
-            ),
-            const SizedBox(width: 8),
-            // Subtitle Button
-            _buildControlButton(
-              icon: _selectedSubtitle != null ? Icons.subtitles : Icons.subtitles_off,
-              label: 'CC',
-              color: _selectedSubtitle != null ? Colors.blueAccent : Colors.white,
-              onTap: () => _showSubtitleMenu(_availableSubtitles ?? []),
-            ),
-          ],
+              const Spacer(),
+              // Speed Button
+              _buildControlButton(
+                icon: Icons.speed,
+                label: '${_videoPlayerController?.value.playbackSpeed}x',
+                onTap: _showSpeedMenu,
+              ),
+              const SizedBox(width: 6),
+              // Quality Button
+              _buildControlButton(
+                icon: Icons.high_quality,
+                label: 'Auto',
+                onTap: _showQualityMenu,
+              ),
+              const SizedBox(width: 6),
+              // Aspect Ratio Button
+              _buildControlButton(
+                icon: Icons.aspect_ratio,
+                label: _getFitLabel(),
+                onTap: _toggleVideoFit,
+              ),
+              const SizedBox(width: 6),
+              // Subtitle Button
+              _buildControlButton(
+                icon: _selectedSubtitle != null ? Icons.subtitles : Icons.subtitles_off,
+                label: 'CC',
+                color: _selectedSubtitle != null ? Colors.blueAccent : Colors.white,
+                onTap: () => _showSubtitleMenu(_availableSubtitles ?? []),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -722,19 +725,19 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
-          color: Colors.black45,
-          borderRadius: BorderRadius.circular(20),
+          color: Colors.black54,
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: color, size: 18),
-            const SizedBox(width: 6),
+            Icon(icon, color: color, size: 16),
+            const SizedBox(width: 4),
             Text(
               label,
-              style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
+              style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
             ),
           ],
         ),
