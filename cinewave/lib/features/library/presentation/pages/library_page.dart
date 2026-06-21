@@ -263,37 +263,34 @@ class _FavoriteCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        AdService().showRewardedInterstitialAd(() {
-          // If it's a TV show, we might want to check the history for the last watched episode
-          // or just default to S1E1.
-          int? season = 1;
-          int? episode = 1;
-
-          final libraryState = context.read<LibraryBloc>().state;
-          if (libraryState is LibraryLoaded) {
-            final history = libraryState.history
-                .where((h) => h.mediaId == item.mediaId)
-                .toList();
-            if (history.isNotEmpty) {
-              history.sort((a, b) => b.lastWatched.compareTo(a.lastWatched));
-              season = history.first.season;
-              episode = history.first.episode;
-            }
-          }
-
+        if (item.type == 'movie') {
           Navigator.of(context).pushNamed(
-            '/video-player',
-            arguments: {
-              'tmdbId': item.mediaId,
-              'title': item.title,
-              'type': item.type,
-              'isTv': item.type == 'tv',
-              'seasonNumber': item.type == 'tv' ? season : null,
-              'episodeNumber': item.type == 'tv' ? episode : null,
-              'posterUrl': item.posterUrl,
-            },
+            '/movie-detail',
+            arguments: Movie(
+              id: int.parse(item.mediaId),
+              title: item.title,
+              posterUrl: item.posterUrl ?? '',
+              backdropUrl: item.backdropUrl ?? '',
+              overview: item.overview ?? '',
+              releaseDate: item.releaseDate ?? '',
+              voteAverage: item.rating,
+            ),
           );
-        });
+        } else {
+          Navigator.of(context).pushNamed(
+            '/tv-detail',
+            arguments: TVShow(
+              id: int.parse(item.mediaId),
+              name: item.title,
+              posterUrl: item.posterUrl ?? '',
+              backdropUrl: item.backdropUrl ?? '',
+              overview: item.overview ?? '',
+              firstAirDate: item.releaseDate ?? '',
+              voteAverage: item.rating,
+              seasons: [],
+            ),
+          );
+        }
       },
       child: Container(
         width: 120,
