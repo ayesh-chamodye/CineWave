@@ -348,8 +348,6 @@ class _TVDetailPageState extends State<TVDetailPage> {
                         ],
                       ),
                     ),
-                  const SizedBox(height: 12),
-                  const BannerAdWidget(),
                   const SizedBox(height: 20),
                   DetailInfoWidget(tvShow: tvToShow),
                   const SizedBox(height: 20),
@@ -372,6 +370,7 @@ class _TVDetailPageState extends State<TVDetailPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      bottomNavigationBar: const SafeArea(child: BannerAdWidget()),
       body: BlocBuilder<TVDetailBloc, TVDetailState>(
         builder: (context, state) {
           if (state is TVDetailLoading) return const Center(child: CircularProgressIndicator());

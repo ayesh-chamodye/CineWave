@@ -39,6 +39,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       resizeToAvoidBottomInset: false,
+      bottomNavigationBar: const SafeArea(child: BannerAdWidget()),
       body: BlocProvider(
         create: (_) => MovieDetailBloc(
           movieDetailRepository: context.read<MovieDetailRepository>(),
@@ -199,8 +200,6 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                             ],
                           ),
                         ),
-                      const SizedBox(height: 12),
-                      const BannerAdWidget(),
                       const SizedBox(height: 20),
                       DetailInfoWidget(movie: movieToShow),
                     ],

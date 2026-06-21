@@ -78,7 +78,6 @@ class _LibraryPageState extends State<LibraryPage> {
 
             return CustomScrollView(
               slivers: [
-                const SliverToBoxAdapter(child: BannerAdWidget()),
                 if (continuing.isNotEmpty)
                   _buildSectionTitle('Continue Watching'),
                 if (continuing.isNotEmpty)
