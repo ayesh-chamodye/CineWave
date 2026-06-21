@@ -73,7 +73,13 @@ class _LandscapeVideoPlayerPageState extends State<LandscapeVideoPlayerPage> {
   void dispose() {
     _videoPlayerController?.dispose();
     _chewieController?.dispose();
-    SystemChrome.setPreferredOrientations(DeviceOrientation.values);
+    
+    // Force reset to portrait when leaving the player
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
+
+    // Restore system UI (status bar and navigation bar)
     SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.edgeToEdge,
       overlays: SystemUiOverlay.values,
