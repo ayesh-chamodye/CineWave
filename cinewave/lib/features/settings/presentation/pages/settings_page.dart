@@ -5,6 +5,7 @@ import 'package:cinewave/core/theme/bloc/theme_bloc.dart';
 import 'package:cinewave/core/constants/app_constants.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -52,6 +53,17 @@ class _SettingsPageState extends State<SettingsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Cache cleared successfully')),
       );
+    }
+  }
+
+  Future<void> _launchURL(String url) async {
+    final uri = Uri.parse(url);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not launch $url')),
+        );
+      }
     }
   }
 
@@ -116,7 +128,7 @@ class _SettingsPageState extends State<SettingsPage> {
           ListTile(
             title: const Text('Privacy Policy', style: TextStyle(color: Colors.white)),
             trailing: const Icon(Icons.open_in_new, color: Colors.white24, size: 16),
-            onTap: () {},
+            onTap: () => _launchURL('https://ayesh-chamodye.github.io/CineWave/privacy-policy.html'),
           ),
           const SizedBox(height: 40),
           Center(
