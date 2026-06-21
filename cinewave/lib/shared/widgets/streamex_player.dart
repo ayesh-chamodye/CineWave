@@ -622,11 +622,7 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
             _buildErrorOverlay(),
 
           // 🔙 Top Control Bar
-          if (!_isExtracting) 
-            IgnorePointer(
-              ignoring: false, // Ensure we can click buttons
-              child: _buildTopControlBar(),
-            ),
+          if (!_isExtracting) _buildTopControlBar(),
 
           // ⏭️ Next Episode Button
           if (_showNextEpisodeButton) _buildNextEpisodeButton(),
@@ -642,7 +638,7 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
       right: 0,
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
               // Back Button
