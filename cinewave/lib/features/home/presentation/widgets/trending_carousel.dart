@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cinewave/core/models/media_models.dart';
 import 'package:cinewave/shared/widgets/network_image.dart';
+import 'package:cinewave/core/ads/ad_service.dart';
 
 class TrendingCarousel extends StatefulWidget {
   final List<Movie> movies;
@@ -264,14 +265,17 @@ class _TrendingSlide extends StatelessWidget {
                       padding: const EdgeInsets.only(top: 12),
                       child: TextButton.icon(
                         onPressed: () {
-                          Navigator.of(context).pushNamed(
-                            '/video-player',
-                            arguments: {
-                              'tmdbId': movie.id.toString(),
-                              'title': movie.title,
-                              'type': 'movie',
-                            },
-                          );
+                          AdService().showRewardedInterstitialAd(() {
+                            Navigator.of(context).pushNamed(
+                              '/video-player',
+                              arguments: {
+                                'tmdbId': movie.id.toString(),
+                                'title': movie.title,
+                                'type': 'movie',
+                                'posterUrl': movie.posterUrl,
+                              },
+                            );
+                          });
                         },
                         icon: Container(
                           padding: const EdgeInsets.all(5),

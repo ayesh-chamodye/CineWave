@@ -10,6 +10,11 @@ import 'package:cinewave/shared/widgets/source_selection_dialog.dart';
 import 'package:cinewave/core/models/media_models.dart';
 import 'package:cinewave/features/tv_detail/presentation/widgets/detail_info.dart';
 import 'package:cinewave/shared/utils/link_extractor.dart';
+import 'package:cinewave/core/ads/ad_service.dart';
+import 'package:cinewave/features/library/presentation/bloc/library_bloc.dart';
+import 'package:cinewave/features/library/presentation/bloc/library_event.dart';
+import 'package:cinewave/features/library/presentation/bloc/library_state.dart';
+import 'package:cinewave/core/models/library_models.dart';
 
 class TVDetailPage extends StatefulWidget {
   static const String routeName = '/tv-detail';
@@ -189,17 +194,20 @@ class _TVDetailPageState extends State<TVDetailPage> {
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () {
-                            Navigator.of(context).pushNamed(
-                              '/video-player',
-                              arguments: {
-                                'tmdbId': tvShow.id.toString(),
-                                'title': tvShow.name,
-                                'type': 'tv',
-                                'isTv': true,
-                                'seasonNumber': _selectedSeason,
-                                'episodeNumber': _selectedEpisode,
-                              },
-                            );
+                            AdService().showRewardedInterstitialAd(() {
+                              Navigator.of(context).pushNamed(
+                                '/video-player',
+                                arguments: {
+                                  'tmdbId': tvShow.id.toString(),
+                                  'title': tvShow.name,
+                                  'type': 'tv',
+                                  'isTv': true,
+                                  'seasonNumber': _selectedSeason,
+                                  'episodeNumber': _selectedEpisode,
+                                  'posterUrl': tvShow.posterUrl,
+                                },
+                              );
+                            });
                           },
                           icon: const Icon(Icons.play_arrow, color: Colors.white),
                           label: const Text('Play', style: TextStyle(color: Colors.white)),
@@ -225,16 +233,42 @@ class _TVDetailPageState extends State<TVDetailPage> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      IconButton(
-                        onPressed: () {},
-                        icon: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.white38),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Icon(Icons.thumb_up_off_alt, color: Colors.white70),
-                        ),
+                      BlocBuilder<LibraryBloc, LibraryState>(
+                        builder: (context, state) {
+                          bool isFav = false;
+                          if (state is LibraryLoaded) {
+                            isFav = state.favorites.any((f) => f.mediaId == tvShow.id.toString());
+                          }
+                          return IconButton(
+                            onPressed: () {
+                              context.read<LibraryBloc>().add(
+                                    ToggleFavorite(
+                                      FavoriteItem(
+                                        mediaId: tvShow.id.toString(),
+                                        title: tvShow.name,
+                                        posterUrl: tvShow.posterUrl,
+                                        backdropUrl: tvShow.backdropUrl,
+                                        overview: tvShow.overview,
+                                        type: 'tv',
+                                        rating: tvShow.voteAverage,
+                                        releaseDate: tvShow.firstAirDate,
+                                      ),
+                                    ),
+                                  );
+                            },
+                            icon: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.white38),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Icon(
+                                isFav ? Icons.favorite : Icons.favorite_border,
+                                color: isFav ? Colors.red : Colors.white70,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),

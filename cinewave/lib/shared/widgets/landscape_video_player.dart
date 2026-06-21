@@ -13,6 +13,7 @@ class LandscapeVideoPlayerPage extends StatefulWidget {
   final int? episodeNumber;
   final String? tmdbId;
   final String? videoUrl;
+  final String? posterUrl;
   final bool isLocal;
 
   const LandscapeVideoPlayerPage({
@@ -23,6 +24,7 @@ class LandscapeVideoPlayerPage extends StatefulWidget {
     this.episodeNumber,
     this.tmdbId,
     this.videoUrl,
+    this.posterUrl,
     this.isLocal = false,
   });
 
@@ -121,6 +123,7 @@ class _LandscapeVideoPlayerPageState extends State<LandscapeVideoPlayerPage> {
           season: widget.seasonNumber,
           episode: widget.episodeNumber,
           title: widget.title,
+          posterUrl: widget.posterUrl,
           onBack: () => Navigator.of(context).pop(),
         ),
       ),

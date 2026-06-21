@@ -5,6 +5,10 @@ import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'package:cinewave/shared/utils/link_extractor.dart';
 import 'package:cinewave/shared/utils/video_cache.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cinewave/features/library/presentation/bloc/library_bloc.dart';
+import 'package:cinewave/features/library/presentation/bloc/library_event.dart';
+import 'package:cinewave/core/models/library_models.dart';
 
 class StreamexPlayer extends StatefulWidget {
   final String tmdbId;
@@ -12,6 +16,7 @@ class StreamexPlayer extends StatefulWidget {
   final int? season;
   final int? episode;
   final String? title;
+  final String? posterUrl;
   final VoidCallback? onBack;
 
   const StreamexPlayer({
@@ -21,6 +26,7 @@ class StreamexPlayer extends StatefulWidget {
     this.season,
     this.episode,
     this.title,
+    this.posterUrl,
     this.onBack,
   });
 
@@ -31,6 +37,7 @@ class StreamexPlayer extends StatefulWidget {
 class _StreamexPlayerState extends State<StreamexPlayer> {
   VideoPlayerController? _videoPlayerController;
   ChewieController? _chewieController;
+  Timer? _historyTimer;
 
   bool _isExtracting = true;
   String _errorMessage = '';
@@ -54,9 +61,37 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
 
   @override
   void dispose() {
+    _historyTimer?.cancel();
+    _saveProgress();
     _videoPlayerController?.dispose();
     _chewieController?.dispose();
     super.dispose();
+  }
+
+  void _saveProgress() {
+    if (_videoPlayerController == null || !_videoPlayerController!.value.isInitialized) return;
+
+    final position = _videoPlayerController!.value.position.inMilliseconds;
+    final duration = _videoPlayerController!.value.duration.inMilliseconds;
+
+    if (position <= 0) return;
+
+    final historyItem = WatchHistoryItem(
+      id: widget.isTv
+          ? 'tv_${widget.tmdbId}_${widget.season}_${widget.episode}'
+          : 'movie_${widget.tmdbId}',
+      mediaId: widget.tmdbId,
+      title: widget.title ?? 'Unknown',
+      posterUrl: widget.posterUrl,
+      type: widget.isTv ? 'tv' : 'movie',
+      season: widget.season,
+      episode: widget.episode,
+      position: position,
+      duration: duration,
+      lastWatched: DateTime.now(),
+    );
+
+    context.read<LibraryBloc>().add(AddToHistory(historyItem));
   }
 
   // ---------------------------------------------------------------------------
@@ -139,6 +174,9 @@ class _StreamexPlayerState extends State<StreamexPlayer> {
       if (mounted) {
         setState(() {
           _isExtracting = false;
+        });
+        _historyTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+          _saveProgress();
         });
       }
     } catch (e) {

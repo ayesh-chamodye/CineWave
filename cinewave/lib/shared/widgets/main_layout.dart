@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cinewave/features/home/presentation/pages/home_page.dart';
 import 'package:cinewave/features/search/presentation/pages/search_page.dart';
-import 'package:cinewave/features/downloads/presentation/pages/downloads_page.dart';
+import 'package:cinewave/features/library/presentation/pages/library_page.dart';
 import 'package:cinewave/features/settings/presentation/pages/settings_page.dart';
 
 class MainLayout extends StatefulWidget {
@@ -17,7 +17,7 @@ class _MainLayoutState extends State<MainLayout> {
   final List<Widget> _pages = [
     const HomePage(),
     const SearchPage(),
-    const DownloadsPage(),
+    const LibraryPage(),
     const SettingsPage(),
   ];
 
@@ -50,9 +50,9 @@ class _MainLayoutState extends State<MainLayout> {
             label: 'Search',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.download_outlined, size: 24),
-            activeIcon: Icon(Icons.download, size: 28),
-            label: 'Downloads',
+            icon: Icon(Icons.video_library_outlined, size: 24),
+            activeIcon: Icon(Icons.video_library, size: 28),
+            label: 'Library',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings_outlined, size: 24),

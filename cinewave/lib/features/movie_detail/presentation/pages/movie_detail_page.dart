@@ -8,6 +8,11 @@ import 'package:cinewave/features/downloads/presentation/bloc/download_bloc.dart
 import 'package:cinewave/features/downloads/presentation/bloc/download_event.dart';
 import 'package:cinewave/shared/widgets/source_selection_dialog.dart';
 import 'package:cinewave/core/models/media_models.dart';
+import 'package:cinewave/core/ads/ad_service.dart';
+import 'package:cinewave/features/library/presentation/bloc/library_bloc.dart';
+import 'package:cinewave/features/library/presentation/bloc/library_event.dart';
+import 'package:cinewave/features/library/presentation/bloc/library_state.dart';
+import 'package:cinewave/core/models/library_models.dart';
 
 class MovieDetailPage extends StatefulWidget {
   static const String routeName = '/movie-detail';
@@ -68,14 +73,17 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                           Expanded(
                             child: ElevatedButton.icon(
                               onPressed: () {
-                                Navigator.of(context).pushNamed(
-                                  '/video-player',
-                                  arguments: {
-                                    'tmdbId': movie.id.toString(),
-                                    'title': movie.title,
-                                    'type': 'movie',
-                                  },
-                                );
+                                AdService().showRewardedInterstitialAd(() {
+                                  Navigator.of(context).pushNamed(
+                                    '/video-player',
+                                    arguments: {
+                                      'tmdbId': movie.id.toString(),
+                                      'title': movie.title,
+                                      'type': 'movie',
+                                      'posterUrl': movie.posterUrl,
+                                    },
+                                  );
+                                });
                               },
                               icon: const Icon(Icons.play_arrow, color: Colors.white),
                               label: const Text('Play', style: TextStyle(color: Colors.white)),
@@ -117,16 +125,42 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          IconButton(
-                            onPressed: () {},
-                            icon: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.white38),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: const Icon(Icons.thumb_up_off_alt, color: Colors.white70),
-                            ),
+                          BlocBuilder<LibraryBloc, LibraryState>(
+                            builder: (context, state) {
+                              bool isFav = false;
+                              if (state is LibraryLoaded) {
+                                isFav = state.favorites.any((f) => f.mediaId == movie.id.toString());
+                              }
+                              return IconButton(
+                                onPressed: () {
+                                  context.read<LibraryBloc>().add(
+                                        ToggleFavorite(
+                                          FavoriteItem(
+                                            mediaId: movie.id.toString(),
+                                            title: movie.title,
+                                            posterUrl: movie.posterUrl,
+                                            backdropUrl: movie.backdropUrl,
+                                            overview: movie.overview,
+                                            type: 'movie',
+                                            rating: movie.voteAverage,
+                                            releaseDate: movie.releaseDate,
+                                          ),
+                                        ),
+                                      );
+                                },
+                                icon: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: Colors.white38),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Icon(
+                                    isFav ? Icons.favorite : Icons.favorite_border,
+                                    color: isFav ? Colors.red : Colors.white70,
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),

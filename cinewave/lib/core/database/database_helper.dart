@@ -19,9 +19,17 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _createDB,
+      onUpgrade: _onUpgrade,
     );
+  }
+
+  Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await _createWatchHistoryTable(db);
+      await _createFavoritesTable(db);
+    }
   }
 
   Future _createDB(Database db, int version) async {
@@ -35,6 +43,40 @@ class DatabaseHelper {
         season INTEGER,
         episode INTEGER,
         status INTEGER NOT NULL
+      )
+    ''');
+    await _createWatchHistoryTable(db);
+    await _createFavoritesTable(db);
+  }
+
+  Future _createWatchHistoryTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE watch_history (
+        id TEXT PRIMARY KEY,
+        mediaId TEXT NOT NULL,
+        title TEXT NOT NULL,
+        posterUrl TEXT,
+        type TEXT NOT NULL,
+        season INTEGER,
+        episode INTEGER,
+        position INTEGER NOT NULL,
+        duration INTEGER NOT NULL,
+        lastWatched TEXT NOT NULL
+      )
+    ''');
+  }
+
+  Future _createFavoritesTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE favorites (
+        mediaId TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        posterUrl TEXT,
+        backdropUrl TEXT,
+        overview TEXT,
+        type TEXT NOT NULL,
+        rating REAL,
+        releaseDate TEXT
       )
     ''');
   }

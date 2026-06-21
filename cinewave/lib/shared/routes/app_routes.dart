@@ -56,6 +56,7 @@ class AppRoutes {
             episodeNumber: args?['episodeNumber'] as int?,
             tmdbId: args?['tmdbId'] as String?,
             videoUrl: args?['videoUrl'] as String?,
+            posterUrl: args?['posterUrl'] as String?,
             isLocal: (args?['isLocal'] as bool?) ?? false,
           ),
           settings: settings,

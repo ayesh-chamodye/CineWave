@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:cinewave/core/theme/app_theme.dart';
 import 'package:cinewave/features/home/presentation/home_bloc.dart';
 import 'package:cinewave/features/home/data/repositories/home_repository.dart';
@@ -18,9 +19,15 @@ import 'package:cinewave/core/database/database_helper.dart';
 import 'package:cinewave/features/downloads/data/datasources/download_local_datasource.dart';
 import 'package:cinewave/features/downloads/presentation/bloc/download_bloc.dart';
 import 'package:cinewave/features/downloads/presentation/bloc/download_event.dart';
+import 'package:cinewave/features/library/data/datasources/library_local_datasource.dart';
+import 'package:cinewave/features/library/data/repositories/library_repository.dart';
+import 'package:cinewave/features/library/presentation/bloc/library_bloc.dart';
+import 'package:cinewave/core/ads/ad_service.dart';
 import 'package:cinewave/shared/routes/app_routes.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await AdService().init();
   runApp(const CineWaveApp());
 }
 
@@ -64,14 +71,26 @@ class CineWaveApp extends StatelessWidget {
             dbHelper: DatabaseHelper.instance,
           ),
         ),
+        RepositoryProvider(
+          create: (_) => LibraryRepository(
+            localDataSource: LibraryLocalDataSource(
+              dbHelper: DatabaseHelper.instance,
+            ),
+          ),
+        ),
       ],
       child: MultiBlocProvider(
         providers: [
-        BlocProvider(
-          create: (context) => DownloadBloc(
-            localDataSource: context.read<DownloadLocalDataSource>(),
-          )..add(LoadDownloads()),
-        ),
+          BlocProvider(
+            create: (context) => DownloadBloc(
+              localDataSource: context.read<DownloadLocalDataSource>(),
+            )..add(LoadDownloads()),
+          ),
+          BlocProvider(
+            create: (context) => LibraryBloc(
+              repository: context.read<LibraryRepository>(),
+            ),
+          ),
           BlocProvider(
             create: (context) => HomeBloc(
               homeRepository: context.read<HomeRepository>(),
