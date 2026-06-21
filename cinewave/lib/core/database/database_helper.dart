@@ -33,18 +33,6 @@ class DatabaseHelper {
   }
 
   Future _createDB(Database db, int version) async {
-    await db.execute('''
-      CREATE TABLE downloads (
-        id TEXT PRIMARY KEY,
-        title TEXT NOT NULL,
-        posterUrl TEXT,
-        filePath TEXT NOT NULL,
-        type TEXT NOT NULL,
-        season INTEGER,
-        episode INTEGER,
-        status INTEGER NOT NULL
-      )
-    ''');
     await _createWatchHistoryTable(db);
     await _createFavoritesTable(db);
   }

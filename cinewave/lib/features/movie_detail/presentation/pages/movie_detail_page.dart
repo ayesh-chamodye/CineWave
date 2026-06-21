@@ -4,9 +4,6 @@ import 'package:cinewave/features/movie_detail/presentation/movie_detail_bloc.da
 import 'package:cinewave/features/movie_detail/data/repositories/movie_detail_repository.dart';
 import 'package:cinewave/features/movie_detail/presentation/widgets/detail_info.dart';
 import 'package:cinewave/shared/widgets/network_image.dart';
-import 'package:cinewave/features/downloads/presentation/bloc/download_bloc.dart';
-import 'package:cinewave/features/downloads/presentation/bloc/download_event.dart';
-import 'package:cinewave/shared/widgets/source_selection_dialog.dart';
 import 'package:cinewave/core/models/media_models.dart';
 import 'package:cinewave/core/ads/ad_service.dart';
 import 'package:cinewave/features/library/presentation/bloc/library_bloc.dart';
@@ -94,34 +91,6 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          IconButton(
-                            onPressed: () {
-                              showDialog<void>(
-                                context: context,
-                                builder: (dialogContext) => SourceSelectionDialog(
-                                  title: movie.title,
-                                  embedUrl: 'https://play.xpass.top/e/movie/${movie.id}',
-                                  onUrlResolved: (url) {
-                                    context.read<DownloadBloc>().add(
-                                      StartDownload(movie: movie, url: url),
-                                    );
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Download started')),
-                                    );
-                                  },
-                                ),
-                              );
-                            },
-                            icon: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.white38),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: const Icon(Icons.download, color: Colors.white70),
                             ),
                           ),
                           const SizedBox(width: 8),

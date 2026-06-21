@@ -4,9 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cinewave/features/tv_detail/presentation/tv_detail_bloc.dart';
 import 'package:cinewave/features/tv_detail/data/repositories/tv_detail_repository.dart';
 import 'package:cinewave/shared/widgets/network_image.dart';
-import 'package:cinewave/features/downloads/presentation/bloc/download_bloc.dart';
-import 'package:cinewave/features/downloads/presentation/bloc/download_event.dart';
-import 'package:cinewave/shared/widgets/source_selection_dialog.dart';
 import 'package:cinewave/core/models/media_models.dart';
 import 'package:cinewave/features/tv_detail/presentation/widgets/detail_info.dart';
 import 'package:cinewave/shared/utils/link_extractor.dart';
@@ -65,34 +62,6 @@ class _TVDetailPageState extends State<TVDetailPage> {
     super.dispose();
   }
 
-  void _startDownload() {
-    if (_selectedSeason == null ||
-        _selectedEpisode == null ||
-        _currentTvShow == null) return;
-    final embedUrl =
-        'https://play.xpass.top/e/tv/${_currentTvShow!.id}/${_selectedSeason}/${_selectedEpisode}';
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) => SourceSelectionDialog(
-        title:
-            '${_currentTvShow!.name} S${_selectedSeason!.toString().padLeft(2, '0')}E${_selectedEpisode!.toString().padLeft(2, '0')}',
-        embedUrl: embedUrl,
-        onUrlResolved: (url) {
-          context.read<DownloadBloc>().add(
-                StartDownload(
-                  tvShow: _currentTvShow!,
-                  season: _selectedSeason,
-                  episode: _selectedEpisode,
-                  url: url,
-                ),
-              );
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Download started')),
-          );
-        },
-      ),
-    );
-  }
 
   void _playEpisode(int episode) {
     setState(() {
@@ -218,18 +187,6 @@ class _TVDetailPageState extends State<TVDetailPage> {
                               borderRadius: BorderRadius.circular(4),
                             ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      IconButton(
-                        onPressed: _startDownload,
-                        icon: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.white38),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Icon(Icons.download, color: Colors.white70),
                         ),
                       ),
                       const SizedBox(width: 8),
