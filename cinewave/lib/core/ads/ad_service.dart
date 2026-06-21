@@ -19,24 +19,11 @@ class AdService {
       ? 'ca-app-pub-8287945486916442/9946793305'
       : 'ca-app-pub-8287945486916442/9946793305';
 
+  String get bannerAdUnitId => _bannerAdUnitId;
+
   Future<void> init() async {
     await MobileAds.instance.initialize();
     loadRewardedInterstitialAd();
-  }
-
-  BannerAd createBannerAd() {
-    return BannerAd(
-      adUnitId: _bannerAdUnitId,
-      size: AdSize.banner,
-      request: const AdRequest(),
-      listener: BannerAdListener(
-        onAdLoaded: (ad) => debugPrint('Banner ad loaded.'),
-        onAdFailedToLoad: (ad, error) {
-          ad.dispose();
-          debugPrint('Banner ad failed to load: $error');
-        },
-      ),
-    )..load();
   }
 
   void loadRewardedInterstitialAd() {

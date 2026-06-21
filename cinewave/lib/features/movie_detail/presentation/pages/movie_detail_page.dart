@@ -58,141 +58,154 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
               ),
             ),
             SliverToBoxAdapter(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 16),
-                  if (movie.playerUrl.isNotEmpty ||
-                      (movie.videoUrl != null && movie.videoUrl!.isNotEmpty))
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () {
-                                AdService().showRewardedInterstitialAd(() {
-                                  Navigator.of(context).pushNamed(
-                                    '/video-player',
-                                    arguments: {
-                                      'tmdbId': movie.id.toString(),
-                                      'title': movie.title,
-                                      'type': 'movie',
-                                      'posterUrl': movie.posterUrl,
-                                    },
-                                  );
-                                });
-                              },
-                              icon: const Icon(Icons.play_arrow, color: Colors.white),
-                              label: const Text('Play', style: TextStyle(color: Colors.white)),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Theme.of(context).primaryColor,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(4),
+              child: BlocBuilder<MovieDetailBloc, MovieDetailState>(
+                builder: (context, state) {
+                  Movie movieToShow = movie;
+                  bool isLoading = state is MovieDetailLoading;
+                  
+                  if (state is MovieDetailLoaded) {
+                    movieToShow = state.movie;
+                  }
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 16),
+                      if (isLoading)
+                        const Center(child: CircularProgressIndicator())
+                      else if (movieToShow.playerUrl.isNotEmpty ||
+                          (movieToShow.videoUrl != null && movieToShow.videoUrl!.isNotEmpty) || movieToShow.id > 0)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    AdService().showRewardedInterstitialAd(() {
+                                      Navigator.of(context).pushNamed(
+                                        '/video-player',
+                                        arguments: {
+                                          'tmdbId': movieToShow.id.toString(),
+                                          'title': movieToShow.title,
+                                          'type': 'movie',
+                                          'posterUrl': movieToShow.posterUrl,
+                                        },
+                                      );
+                                    });
+                                  },
+                                  icon: const Icon(Icons.play_arrow, color: Colors.white),
+                                  label: const Text('Play', style: TextStyle(color: Colors.white)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Theme.of(context).primaryColor,
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          BlocBuilder<LibraryBloc, LibraryState>(
-                            builder: (context, state) {
-                              bool isFav = false;
-                              bool isWatchlist = false;
-                              bool inHistory = false;
-                              if (state is LibraryLoaded) {
-                                isFav = state.favorites.any((f) => f.mediaId == movie.id.toString());
-                                isWatchlist = state.watchlist.any((w) => w.mediaId == movie.id.toString());
-                                inHistory = state.history.any((h) => h.mediaId == movie.id.toString());
-                              }
-                              return Row(
-                                children: [
-                                  IconButton(
-                                    onPressed: () {
-                                      context.read<LibraryBloc>().add(
-                                            ToggleFavorite(
-                                              FavoriteItem(
-                                                mediaId: movie.id.toString(),
-                                                title: movie.title,
-                                                posterUrl: movie.posterUrl,
-                                                backdropUrl: movie.backdropUrl,
-                                                overview: movie.overview,
-                                                type: 'movie',
-                                                rating: movie.voteAverage,
-                                                releaseDate: movie.releaseDate,
-                                              ),
-                                            ),
-                                          );
-                                    },
-                                    icon: Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        border: Border.all(color: Colors.white38),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Icon(
-                                        isFav ? Icons.favorite : Icons.favorite_border,
-                                        color: isFav ? Colors.red : Colors.white70,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  IconButton(
-                                    onPressed: () {
-                                      context.read<LibraryBloc>().add(
-                                            ToggleWatchlist(
-                                              FavoriteItem(
-                                                mediaId: movie.id.toString(),
-                                                title: movie.title,
-                                                posterUrl: movie.posterUrl,
-                                                backdropUrl: movie.backdropUrl,
-                                                overview: movie.overview,
-                                                type: 'movie',
-                                                rating: movie.voteAverage,
-                                                releaseDate: movie.releaseDate,
-                                              ),
-                                            ),
-                                          );
-                                    },
-                                    icon: Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        border: Border.all(color: Colors.white38),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Icon(
-                                        isWatchlist ? Icons.bookmark : Icons.bookmark_border,
-                                        color: isWatchlist ? Colors.blueAccent : Colors.white70,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  if (inHistory)
-                                    IconButton(
-                                      onPressed: () {
-                                        context.read<LibraryBloc>().add(DeleteHistoryItem('movie_${movie.id}'));
-                                      },
-                                      icon: Container(
-                                        padding: const EdgeInsets.all(8),
-                                        decoration: BoxDecoration(
-                                          border: Border.all(color: Colors.white38),
-                                          borderRadius: BorderRadius.circular(4),
+                              const SizedBox(width: 8),
+                              BlocBuilder<LibraryBloc, LibraryState>(
+                                builder: (context, libraryState) {
+                                  bool isFav = false;
+                                  bool isWatchlist = false;
+                                  bool inHistory = false;
+                                  if (libraryState is LibraryLoaded) {
+                                    isFav = libraryState.favorites.any((f) => f.mediaId == movieToShow.id.toString());
+                                    isWatchlist = libraryState.watchlist.any((w) => w.mediaId == movieToShow.id.toString());
+                                    inHistory = libraryState.history.any((h) => h.mediaId == movieToShow.id.toString());
+                                  }
+                                  return Row(
+                                    children: [
+                                      IconButton(
+                                        onPressed: () {
+                                          context.read<LibraryBloc>().add(
+                                                ToggleFavorite(
+                                                  FavoriteItem(
+                                                    mediaId: movieToShow.id.toString(),
+                                                    title: movieToShow.title,
+                                                    posterUrl: movieToShow.posterUrl,
+                                                    backdropUrl: movieToShow.backdropUrl,
+                                                    overview: movieToShow.overview,
+                                                    type: 'movie',
+                                                    rating: movieToShow.voteAverage,
+                                                    releaseDate: movieToShow.releaseDate,
+                                                  ),
+                                                ),
+                                              );
+                                        },
+                                        icon: Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            border: Border.all(color: Colors.white38),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: Icon(
+                                            isFav ? Icons.favorite : Icons.favorite_border,
+                                            color: isFav ? Colors.red : Colors.white70,
+                                          ),
                                         ),
-                                        child: const Icon(Icons.history_toggle_off, color: Colors.white70),
                                       ),
-                                    ),
-                                ],
-                              );
-                            },
+                                      const SizedBox(width: 8),
+                                      IconButton(
+                                        onPressed: () {
+                                          context.read<LibraryBloc>().add(
+                                                ToggleWatchlist(
+                                                  FavoriteItem(
+                                                    mediaId: movieToShow.id.toString(),
+                                                    title: movieToShow.title,
+                                                    posterUrl: movieToShow.posterUrl,
+                                                    backdropUrl: movieToShow.backdropUrl,
+                                                    overview: movieToShow.overview,
+                                                    type: 'movie',
+                                                    rating: movieToShow.voteAverage,
+                                                    releaseDate: movieToShow.releaseDate,
+                                                  ),
+                                                ),
+                                              );
+                                        },
+                                        icon: Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            border: Border.all(color: Colors.white38),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: Icon(
+                                            isWatchlist ? Icons.bookmark : Icons.bookmark_border,
+                                            color: isWatchlist ? Colors.blueAccent : Colors.white70,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      if (inHistory)
+                                        IconButton(
+                                          onPressed: () {
+                                            context.read<LibraryBloc>().add(DeleteHistoryItem('movie_${movieToShow.id}'));
+                                          },
+                                          icon: Container(
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
+                                              border: Border.all(color: Colors.white38),
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
+                                            child: const Icon(Icons.history_toggle_off, color: Colors.white70),
+                                          ),
+                                        ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                  const SizedBox(height: 12),
-                  const BannerAdWidget(),
-                  const SizedBox(height: 20),
-                  DetailInfoWidget(movie: movie),
-                ],
+                        ),
+                      const SizedBox(height: 12),
+                      const BannerAdWidget(),
+                      const SizedBox(height: 20),
+                      DetailInfoWidget(movie: movieToShow),
+                    ],
+                  );
+                },
               ),
             ),
           ],

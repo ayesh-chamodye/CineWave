@@ -181,176 +181,190 @@ class _TVDetailPageState extends State<TVDetailPage> {
   }
 
   Widget _buildContent(TVShow tvShow) {
-    return CustomScrollView(
-      slivers: [
-        SliverAppBar(
-          expandedHeight: 300,
-          pinned: true,
-          backgroundColor: Colors.black,
-          leading: const BackButton(color: Colors.white),
-          flexibleSpace: FlexibleSpaceBar(
-            background: NetworkImageWidget(
-              imageUrl: tvShow.backdropUrl,
-              fit: BoxFit.cover,
+    return BlocBuilder<TVDetailBloc, TVDetailState>(
+      builder: (context, state) {
+        TVShow tvToShow = tvShow;
+        bool isLoading = state is TVDetailLoading;
+
+        if (state is TVDetailLoaded) {
+          tvToShow = state.tvShow;
+        }
+
+        return CustomScrollView(
+          slivers: [
+            SliverAppBar(
+              expandedHeight: 300,
+              pinned: true,
+              backgroundColor: Colors.black,
+              leading: const BackButton(color: Colors.white),
+              flexibleSpace: FlexibleSpaceBar(
+                background: NetworkImageWidget(
+                  imageUrl: tvToShow.backdropUrl,
+                  fit: BoxFit.cover,
+                ),
+              ),
             ),
-          ),
-        ),
-        SliverToBoxAdapter(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 16),
-              if (tvShow.playerUrl.isNotEmpty ||
-                  (tvShow.videoUrl != null && tvShow.videoUrl!.isNotEmpty))
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            AdService().showRewardedInterstitialAd(() {
-                              Navigator.of(context).pushNamed(
-                                '/video-player',
-                                arguments: {
-                                  'tmdbId': tvShow.id.toString(),
-                                  'title': tvShow.name,
-                                  'type': 'tv',
-                                  'isTv': true,
-                                  'seasonNumber': _selectedSeason,
-                                  'episodeNumber': _selectedEpisode,
-                                  'posterUrl': tvShow.posterUrl,
-                                },
-                              );
-                            });
-                          },
-                          icon: const Icon(Icons.play_arrow, color: Colors.white),
-                          label: const Text('Play', style: TextStyle(color: Colors.white)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).primaryColor,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4),
+            SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 16),
+                  if (isLoading)
+                    const Center(child: CircularProgressIndicator())
+                  else if (tvToShow.playerUrl.isNotEmpty ||
+                      (tvToShow.videoUrl != null && tvToShow.videoUrl!.isNotEmpty) ||
+                      tvToShow.id > 0)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                AdService().showRewardedInterstitialAd(() {
+                                  Navigator.of(context).pushNamed(
+                                    '/video-player',
+                                    arguments: {
+                                      'tmdbId': tvToShow.id.toString(),
+                                      'title': tvToShow.name,
+                                      'type': 'tv',
+                                      'isTv': true,
+                                      'seasonNumber': _selectedSeason,
+                                      'episodeNumber': _selectedEpisode,
+                                      'posterUrl': tvToShow.posterUrl,
+                                    },
+                                  );
+                                });
+                              },
+                              icon: const Icon(Icons.play_arrow, color: Colors.white),
+                              label: const Text('Play', style: TextStyle(color: Colors.white)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Theme.of(context).primaryColor,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      BlocBuilder<LibraryBloc, LibraryState>(
-                        builder: (context, state) {
-                          bool isFav = false;
-                          bool isWatchlist = false;
-                          bool inHistory = false;
-                          if (state is LibraryLoaded) {
-                            isFav = state.favorites.any((f) => f.mediaId == tvShow.id.toString());
-                            isWatchlist = state.watchlist.any((w) => w.mediaId == tvShow.id.toString());
-                            inHistory = state.history.any((h) => h.mediaId == tvShow.id.toString());
-                          }
-                          return Row(
-                            children: [
-                              IconButton(
-                                onPressed: () {
-                                  context.read<LibraryBloc>().add(
-                                        ToggleFavorite(
-                                          FavoriteItem(
-                                            mediaId: tvShow.id.toString(),
-                                            title: tvShow.name,
-                                            posterUrl: tvShow.posterUrl,
-                                            backdropUrl: tvShow.backdropUrl,
-                                            overview: tvShow.overview,
-                                            type: 'tv',
-                                            rating: tvShow.voteAverage,
-                                            releaseDate: tvShow.firstAirDate,
-                                          ),
-                                        ),
-                                      );
-                                },
-                                icon: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.white38),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Icon(
-                                    isFav ? Icons.favorite : Icons.favorite_border,
-                                    color: isFav ? Colors.red : Colors.white70,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              IconButton(
-                                onPressed: () {
-                                  context.read<LibraryBloc>().add(
-                                        ToggleWatchlist(
-                                          FavoriteItem(
-                                            mediaId: tvShow.id.toString(),
-                                            title: tvShow.name,
-                                            posterUrl: tvShow.posterUrl,
-                                            backdropUrl: tvShow.backdropUrl,
-                                            overview: tvShow.overview,
-                                            type: 'tv',
-                                            rating: tvShow.voteAverage,
-                                            releaseDate: tvShow.firstAirDate,
-                                          ),
-                                        ),
-                                      );
-                                },
-                                icon: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.white38),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Icon(
-                                    isWatchlist ? Icons.bookmark : Icons.bookmark_border,
-                                    color: isWatchlist ? Colors.blueAccent : Colors.white70,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              if (inHistory)
-                                IconButton(
-                                  onPressed: () {
-                                    final currentState = context.read<LibraryBloc>().state;
-                                    if (currentState is LibraryLoaded) {
-                                      final historyItems = currentState.history
-                                          .where((h) => h.mediaId == tvShow.id.toString());
-                                      for (var item in historyItems) {
-                                        context.read<LibraryBloc>().add(DeleteHistoryItem(item.id));
-                                      }
-                                    }
-                                  },
-                                  icon: Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      border: Border.all(color: Colors.white38),
-                                      borderRadius: BorderRadius.circular(4),
+                          const SizedBox(width: 8),
+                          BlocBuilder<LibraryBloc, LibraryState>(
+                            builder: (context, libraryState) {
+                              bool isFav = false;
+                              bool isWatchlist = false;
+                              bool inHistory = false;
+                              if (libraryState is LibraryLoaded) {
+                                isFav = libraryState.favorites.any((f) => f.mediaId == tvToShow.id.toString());
+                                isWatchlist = libraryState.watchlist.any((w) => w.mediaId == tvToShow.id.toString());
+                                inHistory = libraryState.history.any((h) => h.mediaId == tvToShow.id.toString());
+                              }
+                              return Row(
+                                children: [
+                                  IconButton(
+                                    onPressed: () {
+                                      context.read<LibraryBloc>().add(
+                                            ToggleFavorite(
+                                              FavoriteItem(
+                                                mediaId: tvToShow.id.toString(),
+                                                title: tvToShow.name,
+                                                posterUrl: tvToShow.posterUrl,
+                                                backdropUrl: tvToShow.backdropUrl,
+                                                overview: tvToShow.overview,
+                                                type: 'tv',
+                                                rating: tvToShow.voteAverage,
+                                                releaseDate: tvToShow.firstAirDate,
+                                              ),
+                                            ),
+                                          );
+                                    },
+                                    icon: Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        border: Border.all(color: Colors.white38),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Icon(
+                                        isFav ? Icons.favorite : Icons.favorite_border,
+                                        color: isFav ? Colors.red : Colors.white70,
+                                      ),
                                     ),
-                                    child: const Icon(Icons.history_toggle_off, color: Colors.white70),
                                   ),
-                                ),
-                            ],
-                          );
-                        },
+                                  const SizedBox(width: 8),
+                                  IconButton(
+                                    onPressed: () {
+                                      context.read<LibraryBloc>().add(
+                                            ToggleWatchlist(
+                                              FavoriteItem(
+                                                mediaId: tvToShow.id.toString(),
+                                                title: tvToShow.name,
+                                                posterUrl: tvToShow.posterUrl,
+                                                backdropUrl: tvToShow.backdropUrl,
+                                                overview: tvToShow.overview,
+                                                type: 'tv',
+                                                rating: tvToShow.voteAverage,
+                                                releaseDate: tvToShow.firstAirDate,
+                                              ),
+                                            ),
+                                          );
+                                    },
+                                    icon: Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        border: Border.all(color: Colors.white38),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Icon(
+                                        isWatchlist ? Icons.bookmark : Icons.bookmark_border,
+                                        color: isWatchlist ? Colors.blueAccent : Colors.white70,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  if (inHistory)
+                                    IconButton(
+                                      onPressed: () {
+                                        final currentLibraryState = context.read<LibraryBloc>().state;
+                                        if (currentLibraryState is LibraryLoaded) {
+                                          final historyItems = currentLibraryState.history
+                                              .where((h) => h.mediaId == tvToShow.id.toString());
+                                          for (var item in historyItems) {
+                                            context.read<LibraryBloc>().add(DeleteHistoryItem(item.id));
+                                          }
+                                        }
+                                      },
+                                      icon: Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          border: Border.all(color: Colors.white38),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: const Icon(Icons.history_toggle_off, color: Colors.white70),
+                                      ),
+                                    ),
+                                ],
+                              );
+                            },
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-              const SizedBox(height: 12),
-              const BannerAdWidget(),
-              const SizedBox(height: 20),
-              DetailInfoWidget(tvShow: tvShow),
-              const SizedBox(height: 20),
-              _buildSeasonDropdown(),
-              const SizedBox(height: 20),
-              const Text('Episodes',
-                  style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              _buildEpisodeGrid(),
-            ],
-          ),
-        ),
-      ],
+                    ),
+                  const SizedBox(height: 12),
+                  const BannerAdWidget(),
+                  const SizedBox(height: 20),
+                  DetailInfoWidget(tvShow: tvToShow),
+                  const SizedBox(height: 20),
+                  _buildSeasonDropdown(),
+                  const SizedBox(height: 20),
+                  const Text('Episodes',
+                      style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  _buildEpisodeGrid(),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
